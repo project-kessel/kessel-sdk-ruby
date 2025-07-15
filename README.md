@@ -2,12 +2,6 @@
 
 A Ruby gRPC library for connecting to [Project Kessel](https://github.com/project-kessel) services. This provides the foundational gRPC client library for Kessel Inventory API, with plans for a higher-level SDK with fluent APIs, OAuth support, and advanced features in future releases.
 
-## Overview
-
-Project Kessel is a relationship-based access control (ReBAC) system inspired by Google's Zanzibar. This library provides Ruby gRPC client stubs and message classes generated from the official Kessel Inventory API protobuf definitions.
-
-**Current Status**: This is the foundational gRPC library layer. A higher-level SDK with fluent client builders, OAuth authentication, and advanced configuration options is planned for future releases.
-
 ## Installation
 
 Add this line to your application's Gemfile:
