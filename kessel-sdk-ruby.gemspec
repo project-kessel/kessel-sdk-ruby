@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.version     = Kessel::Inventory::VERSION
   spec.authors     = ['Project Kessel']
   spec.summary     = 'Ruby SDK for Project Kessel'
-  spec.description = 'This is the official Node.js SDK for [Project Kessel](https://github.com/project-kessel), a system for unifying APIs and experiences with fine-grained authorization, common inventory, and CloudEvents.'
+  spec.description = 'This is the official Ruby SDK for [Project Kessel](https://github.com/project-kessel), a system for unifying APIs and experiences with fine-grained authorization, common inventory, and CloudEvents.'
   spec.homepage    = 'https://github.com/project-kessel/kessel-sdk-ruby'
   spec.license     = 'Apache-2.0'
 
