@@ -1,0 +1,78 @@
+# Ruby
+*.gem
+*.rbc
+/.config
+/coverage/
+/InstalledFiles
+/pkg/
+/spec/reports/
+/spec/examples.txt
+/test/tmp/
+/test/version_tmp/
+/tmp/
+
+# Documentation
+/.yardoc/
+/_yardoc/
+/doc/
+/rdoc/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDEs
+/.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Bundler
+.bundle/
+vendor/bundle/
+.ruby-version
+.ruby-gemset
+
+# RSpec
+/.rspec_status
+
+# SimpleCov
+coverage/
+
+# VCR cassettes (optional - you might want to commit these)
+spec/fixtures/vcr_cassettes/
+
+# Logs
+*.log
+log/
+
+# Build artifacts
+*.tar.gz
+*.tgz
+*.zip
+
+# Local configuration
+config/local.yml
+config/development.yml
+config/test.yml
+
+# Credentials
+credentials.yml
+secrets.yml
+
+# Cache
+.cache/
+
+# Temporary files
+*.tmp
+*.temp

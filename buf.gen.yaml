@@ -1,0 +1,17 @@
+version: v2
+inputs:
+  - module: buf.build/project-kessel/inventory-api
+  - module: buf.build/bufbuild/protovalidate
+plugins:
+  # Generate Ruby message classes
+  - remote: buf.build/protocolbuffers/ruby:v31.1
+    out: lib
+    opt:
+      - paths=source_relative
+    include_imports: true
+  # Generate Ruby gRPC service stubs
+  - remote: buf.build/grpc/ruby:v1.73.1
+    out: lib
+    opt:
+      - paths=source_relative
+    include_imports: true
