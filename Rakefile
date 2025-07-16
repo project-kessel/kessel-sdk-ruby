@@ -4,9 +4,9 @@
 desc 'Build and install gem locally'
 task :install_local do
   puts 'Building and installing gem locally...'
-  system('gem build kessel-sdk-ruby.gemspec') or raise 'Gem build failed'
+  system('gem build kessel-sdk.gemspec') or raise 'Gem build failed'
 
-  gem_file = Dir.glob('kessel-sdk-ruby-*.gem').first
+  gem_file = Dir.glob('kessel-sdk-*.gem').first
   system("gem install #{gem_file}") or raise 'Gem install failed'
 
   puts 'Gem installed locally!'

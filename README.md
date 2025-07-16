@@ -7,7 +7,7 @@ A Ruby gRPC library for connecting to [Project Kessel](https://github.com/projec
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'kessel-sdk-ruby'
+gem 'kessel-sdk'
 ```
 
 And then execute:
@@ -19,7 +19,7 @@ bundle install
 Or install it yourself as:
 
 ```bash
-gem install kessel-sdk-ruby
+gem install kessel-sdk
 ```
 
 ## Usage

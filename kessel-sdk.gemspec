@@ -4,7 +4,7 @@ $LOAD_PATH.push File.expand_path("lib", __dir__)
 require "kessel/version"
 
 Gem::Specification.new do |spec|
-  spec.name        = 'kessel-sdk-ruby'
+  spec.name        = 'kessel-sdk'
   spec.version     = Kessel::Inventory::VERSION
   spec.authors     = ['Project Kessel']
   spec.summary     = 'Ruby SDK for Project Kessel'

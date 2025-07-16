@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'kessel/inventory/v1beta2/inventory_service_services_pb'
+require 'kessel-sdk'
 
 include Kessel::Inventory::V1beta2
 
