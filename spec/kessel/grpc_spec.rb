@@ -50,8 +50,29 @@ RSpec.describe Kessel::GRPC do
         expect(builder_class).to be < client_builder_class
       end
 
-      it 'sets the service class as a class variable' do
-        expect(builder_class.class_variable_get(:@@service_class)).to eq(mock_service_class)
+      it 'sets the service class as a class instance variable' do
+        expect(builder_class.service_class).to eq(mock_service_class)
+      end
+
+      it 'maintains separate service classes for different builders' do
+        # Create a second mock service class
+        second_mock_service_class = Class.new do
+          def self.new(*_args)
+            { service: 'second_service' }
+          end
+        end
+
+        # Create two different builder classes
+        first_builder_class = client_builder_class.create(mock_service_class)
+        second_builder_class = client_builder_class.create(second_mock_service_class)
+
+        # Each should maintain its own service class
+        expect(first_builder_class.service_class).to eq(mock_service_class)
+        expect(second_builder_class.service_class).to eq(second_mock_service_class)
+
+        # They should not interfere with each other
+        expect(first_builder_class.service_class).not_to eq(second_mock_service_class)
+        expect(second_builder_class.service_class).not_to eq(mock_service_class)
       end
 
       describe 'generated builder class' do

@@ -14,10 +14,14 @@ module Kessel
     class ClientBuilder
       def self.create(service_class)
         Class.new(ClientBuilder) do
-          @@service_class = service_class
+          @service_class = service_class
 
           def self.builder
             new
+          end
+
+          class << self
+            attr_reader :service_class
           end
 
           def build_credentials
@@ -35,8 +39,8 @@ module Kessel
               # Connect oauth interceptor
             end
 
-            @@service_class.new(@target, build_credentials, channel_args: @channel_args,
-                                                            interceptors: interceptors)
+            self.class.service_class.new(@target, build_credentials, channel_args: @channel_args,
+                                                                     interceptors: interceptors)
           end
         end
       end
