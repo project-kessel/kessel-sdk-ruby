@@ -1,10 +1,11 @@
+# frozen_string_literal: true
+
 module Kessel
   module Inventory
-
     class IncompleteKesselConfiguration < StandardError
       def initialize(fields)
         fields.is_a? Array
-        super("IncompleteKesselConfigurationError: Missing the following fields to build: #{fields.join(',')}")
+        super("IncompleteKesselConfigurationError: Missing the following fields to build: #{fields.join(', ')}")
       end
     end
 
@@ -18,20 +19,19 @@ module Kessel
         class Defaults
           def self.default_keep_alive
             KeepAlive.new(
-              time_ms: 10000,
+              time_ms: 10_000,
               timeout_ms: 5000,
-              permit_without_calls: true,
-              )
+              permit_without_calls: true
+            )
           end
 
           def self.default_credentials
             Credentials.new(
-              type: "secure"
+              type: 'secure'
             )
           end
         end
       end
     end
-
   end
 end

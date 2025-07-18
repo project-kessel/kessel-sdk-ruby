@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'kessel/grpc'
 require 'kessel/inventory/v1beta1/relationships/k8spolicy_ispropagatedto_k8scluster_service_services_pb'
 require 'kessel/inventory/v1beta1/resources/k8s_clusters_service_services_pb'

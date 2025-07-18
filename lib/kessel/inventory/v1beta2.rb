@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'kessel/grpc'
 require 'kessel/inventory/v1beta2/inventory_service_services_pb'
 

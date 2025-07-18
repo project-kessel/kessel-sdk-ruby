@@ -10,7 +10,6 @@ client = KesselInventoryService::ClientBuilder.builder
                                               .with_insecure_credentials
                                               .build
 
-
 # or if not using the ClientBuilder...
 # client = KesselInventoryService::Stub.new('localhost:9000', :this_channel_is_insecure)
 

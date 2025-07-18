@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'kessel/grpc'
 require 'kessel/inventory/v1/health_services_pb'
 
