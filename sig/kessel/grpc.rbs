@@ -1,10 +1,11 @@
 module Kessel
   module GRPC
-
     module Client
       module Config
         class GRPCConfig < Inventory::Client::Config::Config
-          attr_accessor channel_args: Hash[String, untyped] | nil
+          attr_accessor channel_args: Hash[String, untyped]?
+
+          def initialize: (?target: String?, ?credentials: (Inventory::Client::Config::CredentialsInsecure | Inventory::Client::Config::CredentialsSecure)?, ?keep_alive: Inventory::Client::Config::KeepAlive?, ?auth: Inventory::Client::Config::Auth?, ?channel_args: Hash[String, untyped]?) -> void
         end
 
         GRPCConfig: GRPCConfig
@@ -12,27 +13,30 @@ module Kessel
     end
 
     class ClientBuilder
+      @target: String?
+      @credentials: (Inventory::Client::Config::CredentialsInsecure | Inventory::Client::Config::CredentialsSecure)?
+      @auth: Inventory::Client::Config::Auth?
+      @channel_args: Hash[String, untyped]
 
-      self.@channel_args: Hash[String, untyped]
+      def self.create: (Class service_class) -> Class
 
-      def self.create: -> (ClientBuilder | Class)
+      def initialize: () -> void
 
-      def initialize: -> void
-
-      private def nil_coalescing: (untyped, untyped) -> untyped
-
-      private def validate: -> self
-
-      def with_target: (String) -> self
+      def with_target: (String target) -> self
       def with_insecure_credentials: () -> self
-      def with_secure_credentials: (?String, ?String, ?String) -> self
-      def with_credentials_config: (Inventory::Client::Config::CredentialsInsecure | Inventory::Client::Config::CredentialsSecure) -> untyped
-      def with_auth: (Inventory::Client::Config::Auth) -> self
-      def with_keep_alive: (Inventory::Client::Config::KeepAlive) -> self
-      def with_channel_arg: (String, untyped) -> self
-      def with_config: (Inventory::Client::Config::Config | Client::Config::GRPCConfig)-> self
+      def with_secure_credentials: (?String? root_certs, ?String? private_certs, ?String? cert_chain) -> self
+      def with_credentials_config: ((Inventory::Client::Config::CredentialsInsecure | Inventory::Client::Config::CredentialsSecure) credentials_config) -> self
+      def with_auth: (Inventory::Client::Config::Auth auth_config) -> self
+      def with_keep_alive: (Inventory::Client::Config::KeepAlive keep_alive_config) -> self
+      def with_channel_arg: (String arg, untyped value) -> self
+      def with_config: (Inventory::Client::Config::Config | Client::Config::GRPCConfig config) -> self
 
-      def build: -> untyped
+      def build: () -> untyped
+
+      private
+
+      def validate: () -> self
+      def nil_coalescing: (untyped first, untyped second) -> untyped
     end
   end
 end

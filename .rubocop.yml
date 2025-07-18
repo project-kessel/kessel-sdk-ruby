@@ -30,6 +30,7 @@ Metrics/ParameterLists:
 Metrics/BlockLength:
   Exclude:
     - 'spec/**/*'
+    - '*.gemspec'
 
 # Allow longer lines for readability in some cases
 Layout/LineLength:

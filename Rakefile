@@ -25,6 +25,26 @@ rescue LoadError
   puts "RSpec or RuboCop not available. Run 'bundle install' to install development dependencies."
 end
 
+# Load YARD documentation tasks if available
+begin
+  require 'yard'
+
+  YARD::Rake::YardocTask.new(:docs) do |t|
+    t.files = ['lib/**/*.rb']
+    t.options = ['--markup', 'markdown', '--output-dir', 'doc/api']
+  end
+
+  # Task to serve documentation locally
+  desc 'Serve documentation locally on http://localhost:8808'
+  task :docs_serve do
+    puts 'Starting YARD documentation server...'
+    puts 'Visit http://localhost:8808 to view documentation'
+    system('yard server --reload --port 8808')
+  end
+rescue LoadError
+  puts "YARD not available. Run 'bundle install' to install documentation dependencies."
+end
+
 # Default task - run tests and linting
 desc 'Run tests and linting'
 task default: %i[spec rubocop]
@@ -48,6 +68,8 @@ task :setup do
   puts '  rake spec           - Run tests'
   puts '  rake rubocop        - Run linting'
   puts '  rake test_coverage  - Run tests with coverage'
+  puts '  rake docs           - Generate API documentation'
+  puts '  rake docs_serve     - Serve documentation locally'
   puts '  rake install_local  - Build and install gem locally'
 end
 
@@ -69,3 +91,14 @@ task :clean do
   FileUtils.rm_rf(Dir.glob('kessel-sdk-*.gem'))
   puts 'Cleaned built gems!'
 end
+
+# Documentation-related clean task
+desc 'Clean generated documentation'
+task :clean_docs do
+  FileUtils.rm_rf('doc')
+  puts 'Cleaned generated documentation!'
+end
+
+# Full clean task
+desc 'Clean all generated files'
+task clean_all: %i[clean clean_docs]

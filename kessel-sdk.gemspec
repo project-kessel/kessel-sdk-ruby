@@ -31,6 +31,13 @@ Gem::Specification.new do |spec|
   # Development dependencies - Code quality
   spec.add_development_dependency 'rubocop', '~> 1.57'
 
+  # Development dependencies - Documentation
+  spec.add_development_dependency 'rack', '~> 3.0'
+  spec.add_development_dependency 'rackup', '~> 2.1'
+  spec.add_development_dependency 'redcarpet', '~> 3.6'
+  spec.add_development_dependency 'webrick', '~> 1.8'
+  spec.add_development_dependency 'yard', '~> 0.9'
+
   # Development dependencies - Type checking
   spec.add_development_dependency 'steep', '~> 1.10.0'
   spec.add_development_dependency 'typeprof', '~> 0.30.1'

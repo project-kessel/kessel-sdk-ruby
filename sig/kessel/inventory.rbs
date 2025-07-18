@@ -1,40 +1,42 @@
 module Kessel
   module Inventory
+    # Exception raised when required configuration fields are missing
     class IncompleteKesselConfiguration < StandardError
-      def initialize: (fields: Array[String]) -> void
+      # @param fields Array of missing configuration field names
+      def initialize: (Array[String] fields) -> void
     end
 
     module Client
       module Config
-
         # Configuration options for gRPC keep-alive behavior.
         class KeepAlive
-
           # Time in milliseconds before pinging the server to check if it's alive.
           # Corresponds to the gRPC option `grpc.keepalive_time_ms`.
           #
           # @default 10000
-          attr_accessor time_ms: Integer | nil
+          attr_accessor time_ms: Integer?
 
           # Time in milliseconds to wait for a keepalive ping response before closing the connection.
           # Corresponds to the gRPC option `grpc.keepalive_timeout_ms`.
           #
           # @default 5000
-          attr_accessor time_out_ms: Integer | nil
+          attr_accessor timeout_ms: Integer?
 
           # Whether to send keepalive pings even when there are no outstanding streams.
           # Corresponds to the gRPC option `grpc.keepalive_permit_without_calls`.
           #
           # @default true
-          attr_accessor permit_without_calls: bool | nil
+          attr_accessor permit_without_calls: bool?
 
-          def initialize: (?time_ms: Integer, ?time_out_ms: Integer, ?permit_without_calls: bool) -> void
+          def initialize: (?time_ms: Integer?, ?timeout_ms: Integer?, ?permit_without_calls: bool?) -> void
         end
 
         # Configuration for gRPC channel credentials.
         class CredentialsInsecure
           # Use insecure credentials (no TLS).
           attr_accessor type: "insecure"
+
+          def initialize: (?type: "insecure"?) -> void
         end
 
         class CredentialsSecure
@@ -43,38 +45,44 @@ module Kessel
 
           # PEM-encoded root certificate(s) for verifying the server.
           # If not provided, uses system default root certificates.
-          attr_accessor root_certs: String | nil
+          attr_accessor root_certs: String?
 
           # PEM-encoded private key for client certificate authentication.
-          attr_accessor private_certs: String | nil
+          attr_accessor private_certs: String?
 
           # PEM-encoded certificate chain for client certificate authentication.
-          attr_accessor cert_chain: String | nil
+          attr_accessor cert_chain: String?
+
+          def initialize: (?type: "secure"?, ?root_certs: String?, ?private_certs: String?, ?cert_chain: String?) -> void
         end
 
         # Contains authentication credentials for an OAuth client.
         class Auth
-            # The OAuth client identifier.
-            attr_accessor client_id: String
+          # The OAuth client identifier.
+          attr_accessor client_id: String
 
-            # The OAuth client secret.
-            attr_accessor client_secret: String
+          # The OAuth client secret.
+          attr_accessor client_secret: String
 
-            # The OAuth issuer URL for discovery.
-            # @example "https://auth.example.com"
-            attr_accessor issuer_url: String
+          # The OAuth issuer URL for discovery.
+          # @example "https://auth.example.com"
+          attr_accessor issuer_url: String
+
+          def initialize: (?client_id: String?, ?client_secret: String?, ?issuer_url: String?) -> void
         end
 
         class Config
-            attr_accessor target: String
-            attr_accessor credentials: CredentialsInsecure | CredentialsSecure | nil
-            attr_accessor keep_alive: KeepAlive | nil
-            attr_accessor auth: Auth | nil
+          attr_accessor target: String
+          attr_accessor credentials: (CredentialsInsecure | CredentialsSecure)?
+          attr_accessor keep_alive: KeepAlive?
+          attr_accessor auth: Auth?
+
+          def initialize: (?target: String?, ?credentials: (CredentialsInsecure | CredentialsSecure)?, ?keep_alive: KeepAlive?, ?auth: Auth?) -> void
         end
 
         class Defaults
-          def self.default_keep_alive: -> KeepAlive
-          def self.default_credentials: -> (CredentialsInsecure | CredentialsSecure)
+          def self.default_keep_alive: () -> KeepAlive
+          def self.default_credentials: () -> (CredentialsInsecure | CredentialsSecure)
         end
 
         KeepAlive: KeepAlive
@@ -83,6 +91,5 @@ module Kessel
         Config: Config
       end
     end
-
   end
 end

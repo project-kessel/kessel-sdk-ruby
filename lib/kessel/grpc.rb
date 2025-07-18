@@ -4,26 +4,103 @@ require 'kessel/inventory'
 require 'grpc'
 
 module Kessel
+  # gRPC client building and configuration module.
+  #
+  # This module provides the ClientBuilder class for creating fluent,
+  # configurable gRPC clients for Kessel services. It offers a builder
+  # pattern API for setting up connections with proper authentication,
+  # keepalive settings, and channel configurations.
+  #
+  # @author Project Kessel
+  # @since 1.0.0
   module GRPC
+    # Client-related classes and configuration for gRPC connections.
     module Client
+      # Configuration classes specific to gRPC client setup.
       module Config
+        # Extended gRPC configuration that includes channel arguments.
+        #
+        # Extends the base configuration with gRPC-specific channel arguments
+        # for fine-tuning connection behavior.
+        #
+        # @!attribute target
+        #   @return [String] Server address in "host:port" format
+        # @!attribute credentials
+        #   @return [Object] gRPC credentials object
+        # @!attribute keep_alive
+        #   @return [Hash] Keepalive configuration
+        # @!attribute auth
+        #   @return [Hash] Authentication configuration
+        # @!attribute channel_args
+        #   @return [Hash] Additional gRPC channel arguments
+        #
+        # @example
+        #   config = GRPCConfig.new(
+        #     "localhost:9000",
+        #     :insecure,
+        #     { time_ms: 10000 },
+        #     { client_id: "app" },
+        #     { "grpc.max_receive_message_length" => 1024 * 1024 }
+        #   )
         GRPCConfig = Struct.new(:target, :credentials, :keep_alive, :auth, :channel_args)
       end
     end
 
+    # Fluent builder for creating configured gRPC clients.
+    #
+    # The ClientBuilder class provides a fluent interface for configuring
+    # and building gRPC clients with various options including authentication,
+    # keepalive settings, and channel arguments.
+    #
+    # This class should not be used directly. Instead, use the service-specific
+    # builders created by calling `.create(service_class)`.
+    #
+    # @example Creating a service-specific builder
+    #   builder_class = ClientBuilder.create(MyService::Stub)
+    #   client = builder_class.builder
+    #     .with_target('localhost:9000')
+    #     .with_insecure_credentials
+    #     .build
+    #
+    # @see #create
     class ClientBuilder
+      # Creates a new builder class for the specified gRPC service.
+      #
+      # This method dynamically creates an anonymous class that inherits from
+      # ClientBuilder and is bound to a specific gRPC service class. Each
+      # service gets its own builder class to avoid interference.
+      #
+      # @param service_class [Class] The gRPC service stub class (e.g., MyService::Stub)
+      # @return [Class] A new builder class bound to the service
+      #
+      # @example
+      #   health_builder = ClientBuilder.create(HealthService::Stub)
+      #   inventory_builder = ClientBuilder.create(InventoryService::Stub)
+      #
+      #   # Each builder maintains its own service class
+      #   health_client = health_builder.builder.with_target('localhost:9000').build
+      #   inventory_client = inventory_builder.builder.with_target('localhost:9001').build
       def self.create(service_class)
         Class.new(ClientBuilder) do
           @service_class = service_class
 
+          # Creates a new builder instance for fluent configuration.
+          #
+          # @return [ClientBuilder] A new builder instance ready for configuration
           def self.builder
             new
           end
 
           class << self
+            # @return [Class] The gRPC service class this builder creates clients for
             attr_reader :service_class
           end
 
+          # Builds the appropriate gRPC credentials object.
+          #
+          # @return [Symbol, GRPC::Core::ChannelCredentials] Either :this_channel_is_insecure
+          #   for insecure connections or a ChannelCredentials object for secure connections
+          # @api private
           def build_credentials
             return :this_channel_is_insecure if @credentials.type == 'insecure'
 
@@ -31,6 +108,16 @@ module Kessel
                                                  @credentials.cert_chain)
           end
 
+          # Builds and returns a configured gRPC client instance.
+          #
+          # @return [Object] A configured gRPC service client
+          # @raise [Kessel::Inventory::IncompleteKesselConfiguration] if required configuration is missing
+          #
+          # @example
+          #   client = builder
+          #     .with_target('localhost:9000')
+          #     .with_insecure_credentials
+          #     .build
           def build
             validate
             interceptors = []
@@ -45,6 +132,10 @@ module Kessel
         end
       end
 
+      # Initializes a new ClientBuilder with default configuration.
+      #
+      # Sets up default keepalive and credential settings from the Inventory
+      # configuration defaults.
       def initialize
         super
         @channel_args = {}
@@ -52,17 +143,46 @@ module Kessel
         with_credentials_config(Inventory::Client::Config::Defaults.default_credentials)
       end
 
+      # Sets the target server address.
+      #
+      # @param target [String] Server address in "host:port" format
+      # @return [self] Returns self for method chaining
+      #
+      # @example
+      #   builder.with_target('kessel.example.com:443')
       def with_target(target)
         @target = target
         self
       end
 
+      # Configures the client to use insecure (non-TLS) connections.
+      #
+      # @return [self] Returns self for method chaining
+      #
+      # @example
+      #   builder.with_insecure_credentials
       def with_insecure_credentials
         @credentials = Inventory::Client::Config::Credentials.new(type: 'insecure')
         # @credentials = :this_channel_is_insecure
         self
       end
 
+      # Configures the client to use secure TLS connections with optional client certificates.
+      #
+      # @param root_certs [String, nil] PEM-encoded root certificates for server verification
+      # @param private_certs [String, nil] PEM-encoded private key for client authentication
+      # @param cert_chain [String, nil] PEM-encoded certificate chain for client authentication
+      # @return [self] Returns self for method chaining
+      #
+      # @example Basic secure connection
+      #   builder.with_secure_credentials
+      #
+      # @example With client certificates
+      #   builder.with_secure_credentials(
+      #     File.read('ca.pem'),
+      #     File.read('client-key.pem'),
+      #     File.read('client-cert.pem')
+      #   )
       def with_secure_credentials(
         root_certs = nil,
         private_certs = nil,
@@ -73,16 +193,48 @@ module Kessel
         self
       end
 
+      # Sets the credentials configuration directly.
+      #
+      # @param credentials_config [Inventory::Client::Config::Credentials] Pre-configured credentials object
+      # @return [self] Returns self for method chaining
+      #
+      # @example
+      #   creds = Inventory::Client::Config::Credentials.new(type: 'secure')
+      #   builder.with_credentials_config(creds)
       def with_credentials_config(credentials_config)
         @credentials = credentials_config
         self
       end
 
+      # Sets the OAuth authentication configuration.
+      #
+      # @param auth_config [Inventory::Client::Config::Auth] Authentication configuration
+      # @return [self] Returns self for method chaining
+      #
+      # @example
+      #   auth = Inventory::Client::Config::Auth.new(
+      #     client_id: 'my-app',
+      #     client_secret: 'secret',
+      #     issuer_url: 'https://auth.example.com'
+      #   )
+      #   builder.with_auth(auth)
       def with_auth(auth_config)
         @auth = auth_config
         self
       end
 
+      # Configures connection keepalive settings.
+      #
+      # @param keep_alive_config [Inventory::Client::Config::KeepAlive] Keepalive configuration
+      # @return [self] Returns self for method chaining
+      #
+      # @example
+      #   keepalive = Inventory::Client::Config::KeepAlive.new(
+      #     time_ms: 15000,
+      #     timeout_ms: 3000,
+      #     permit_without_calls: false
+      #   )
+      #   builder.with_keep_alive(keepalive)
       def with_keep_alive(keep_alive_config)
         default_keep_alive_config = Inventory::Client::Config::Defaults.default_keep_alive
         @channel_args['grpc.keepalive_time_ms'] =
@@ -95,12 +247,31 @@ module Kessel
       end
 
       # Sets a custom gRPC channel option.
-      # @see {@link https://grpc.github.io/grpc/core/group__grpc__arg__keys.html}
+      #
+      # @param arg [String] The gRPC channel argument name
+      # @param value [Object] The value for the channel argument
+      # @return [self] Returns self for method chaining
+      #
+      # @see https://grpc.github.io/grpc/core/group__grpc__arg__keys.html
+      #
+      # @example
+      #   builder.with_channel_arg('grpc.max_receive_message_length', 1024 * 1024)
       def with_channel_arg(arg, value)
         @channel_args[arg] = value
         self
       end
 
+      # Applies a complete configuration object to the builder.
+      #
+      # @param config [Inventory::Client::Config::Config] Complete configuration object
+      # @return [self] Returns self for method chaining
+      #
+      # @example
+      #   config = Inventory::Client::Config::Config.new(
+      #     target: 'localhost:9000',
+      #     credentials: Inventory::Client::Config::Credentials.new(type: 'insecure')
+      #   )
+      #   builder.with_config(config)
       def with_config(config)
         with_target(config.target)
         with_keep_alive(config.keep_alive) unless config.keep_alive.nil?
@@ -115,6 +286,12 @@ module Kessel
         self
       end
 
+      # Raises an error when called on the base ClientBuilder class.
+      #
+      # The base ClientBuilder should not be used directly for building clients.
+      # Instead, use service-specific builders created with {.create}.
+      #
+      # @raise [RuntimeError] Always raises an error with usage instructions
       def build
         raise 'ClientBuilder should not be used directly. Instead use the client builder for the particular version ' \
               'you are targeting'
@@ -122,6 +299,11 @@ module Kessel
 
       private
 
+      # Validates that required configuration is present.
+      #
+      # @return [self] Returns self if validation passes
+      # @raise [Kessel::Inventory::IncompleteKesselConfiguration] if required fields are missing
+      # @api private
       def validate
         missing_fields = []
         missing_fields.push 'target' unless @target
@@ -134,6 +316,12 @@ module Kessel
         self
       end
 
+      # Returns the first non-nil value (null coalescing).
+      #
+      # @param first [Object] First value to check
+      # @param second [Object] Fallback value if first is nil
+      # @return [Object] Either first (if not nil) or second
+      # @api private
       def nil_coalescing(first, second)
         first.nil? ? second : first
       end
