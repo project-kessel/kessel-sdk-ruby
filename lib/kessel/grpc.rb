@@ -113,8 +113,8 @@ module Kessel
 
       def with_config(config)
         self.with_target(config.target)
-            .with_keep_alive(config.keep_alive)
-            .with_credentials_config(config.credentials)
+        self.with_keep_alive(config.keep_alive) unless config.keep_alive.nil?
+        self.with_credentials_config(config.credentials) unless config.credentials.nil?
 
         if config.respond_to? :channel_args
           config.channel_args.each_pair do |arg, value|
