@@ -1,9 +1,7 @@
-require:
-  - rubocop-rspec
-
 AllCops:
   TargetRubyVersion: 3.3
   NewCops: enable
+  SuggestExtensions: false
   Exclude:
     - 'vendor/**/*'
     - 'lib/buf/**/*'
@@ -12,10 +10,6 @@ AllCops:
     - 'lib/kessel/inventory/v*/**/*_services_pb.rb'
     - '.rbs_collection/**/*'
     - 'sig/**/*'
-
-# Disable problematic cops
-Capybara/RSpec/PredicateMatcher:
-  Enabled: false
 
 # File length is often not indicative of complexity in generated code or config
 Metrics/ModuleLength:
@@ -31,6 +25,11 @@ Metrics/MethodLength:
 # Allow longer parameter lists for configuration methods
 Metrics/ParameterLists:
   Max: 6
+
+# Allow longer blocks in test files
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
 
 # Allow longer lines for readability in some cases
 Layout/LineLength:
@@ -61,17 +60,4 @@ Gemspec/DevelopmentDependencies:
 # Allow filename with dashes for main entry point
 Naming/FileName:
   Exclude:
-    - 'lib/kessel-sdk.rb'
-
-# RSpec specific
-RSpec/ExampleLength:
-  Max: 25
-
-RSpec/MultipleExpectations:
-  Max: 8
-
-RSpec/NestedGroups:
-  Max: 6
-
-RSpec/MultipleMemoizedHelpers:
-  Max: 8 
+    - 'lib/kessel-sdk.rb' 

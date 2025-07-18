@@ -30,7 +30,6 @@ Gem::Specification.new do |spec|
 
   # Development dependencies - Code quality
   spec.add_development_dependency 'rubocop', '~> 1.57'
-  spec.add_development_dependency 'rubocop-rspec', '~> 2.25'
 
   # Development dependencies - Type checking
   spec.add_development_dependency 'steep', '~> 1.10.0'
