@@ -1,0 +1,87 @@
+module Kessel
+  module Inventory
+    class IncompleteKesselConfiguration < StandardError
+      def initialize: (fields: Array[String]) -> void
+    end
+
+    module Client
+      module Config
+
+        # Configuration options for gRPC keep-alive behavior.
+        type keep_alive = {
+
+            # Time in milliseconds before pinging the server to check if it's alive.
+            # Corresponds to the gRPC option `grpc.keepalive_time_ms`.
+            #
+            # @default 10000
+            ?time_ms: Integer,
+
+            # Time in milliseconds to wait for a keepalive ping response before closing the connection.
+            # Corresponds to the gRPC option `grpc.keepalive_timeout_ms`.
+            #
+            # @default 5000
+            ?time_out_ms: Integer,
+
+            # Whether to send keepalive pings even when there are no outstanding streams.
+            # Corresponds to the gRPC option `grpc.keepalive_permit_without_calls`.
+            #
+            # @default true
+            ?permit_without_calls: bool,
+        }
+
+        # Configuration for gRPC channel credentials.
+        type credentials = {
+            # Use insecure credentials (no TLS).
+            type: "insecure"
+        } | {
+            # Use secure SSL/TLS credentials.
+            type: "secure",
+
+            # PEM-encoded root certificate(s) for verifying the server.
+            # If not provided, uses system default root certificates.
+            ?root_certs: String,
+
+            # PEM-encoded private key for client certificate authentication.
+            ?private_certs: String,
+
+            # PEM-encoded certificate chain for client certificate authentication.
+            ?cert_chain: String,
+
+            # Whether to verify the server certificate against the list of supplied CAs.
+            #
+            # @default true
+            ?reject_unauthorized: bool,
+        }
+
+        # Contains authentication credentials for an OAuth client.
+        type auth = {
+            # The OAuth client identifier.
+            client_id: String,
+
+            # The OAuth client secret.
+            client_secret: String,
+
+            # The OAuth issuer URL for discovery.
+            # @example "https://auth.example.com"
+            issuer_url: String
+        }
+
+        type config = {
+            target: String,
+            ?credentials: credentials,
+            ?keep_alive: keep_alive,
+            ?auth: auth,
+        }
+
+        class Defaults
+          def self.default_keep_alive: -> keep_alive
+          def self.default_credentials: -> credentials
+        end
+
+
+
+      end
+    end
+
+  end
+end

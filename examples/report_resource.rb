@@ -6,7 +6,13 @@ require 'kessel-sdk'
 
 include Kessel::Inventory::V1beta2
 
-client = KesselInventoryService::Stub.new('localhost:9000', :this_channel_is_insecure)
+client = KesselInventoryService::ClientBuilder.builder
+                                              .with_target('localhost:9081')
+                                              .with_insecure_credentials
+                                              .build
+
+# or if not using the ClientBuilder...
+# client = KesselInventoryService::Stub.new('localhost:9000', :this_channel_is_insecure)
 
 common = Google::Protobuf::Struct.decode_json({ 'workspace_id' => '6eb10953-4ec9-4feb-838f-ba43a60880bf' }.to_json)
 

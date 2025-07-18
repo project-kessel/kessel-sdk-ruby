@@ -76,3 +76,4 @@ secrets.yml
 # Temporary files
 *.tmp
 *.temp
+.rbs_collection

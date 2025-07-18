@@ -5,7 +5,13 @@ require 'kessel-sdk'
 
 include Kessel::Inventory::V1beta2
 
-client = KesselInventoryService::Stub.new('localhost:9000', :this_channel_is_insecure)
+client = KesselInventoryService::ClientBuilder.builder
+                                              .with_target('localhost:9081')
+                                              .with_insecure_credentials
+                                              .build
+
+# or if not using the ClientBuilder...
+# client = KesselInventoryService::Stub.new('localhost:9000', :this_channel_is_insecure)
 
 subject_reference = SubjectReference.new(
   resource: ResourceReference.new(

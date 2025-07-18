@@ -1,0 +1,9 @@
+sources:
+  - name: ruby/gem_rbs
+    remote: https://github.com/ruby/gem_rbs.git
+    revision: main
+    repo_dir: gems
+
+# A directory to install the downloaded RBS files.
+# The path is relative to this file.
+path: .rbs_collection

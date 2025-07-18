@@ -1,0 +1,43 @@
+module Kessel
+  module GRPC
+
+    module Client
+      module Config
+        type grpc_config = {
+            target: String,
+            ?credentials: Inventory::Client::Config::credentials,
+            ?keep_alive: Inventory::Client::Config::keep_alive,
+            ?auth: Inventory::Client::Config::auth,
+            ?channel_args: Hash[String, untyped]
+          }
+      end
+    end
+
+    class ClientBuilder
+
+      self.@channel_args: Hash[String, untyped]
+
+      def self.create: -> (ClientBuilder | Class)
+
+      def initialize: -> void
+
+      private def validate: -> self
+
+      def with_target: (target: String) -> self
+      def with_credentials: (credentials: untyped) -> self # type
+      def with_insecure_credentials: () -> self
+      def with_secure_credentials: (?root_certs: String, ?private_certs: String, ?cert_chain: String) -> self
+      def with_credentials_config: (credentials_config: Inventory::Client::Config::credentials) -> untyped
+      def with_auth: (auth_config: Inventory::Client::Config::auth) -> self
+      def with_keep_alive: (keep_alive_config: Inventory::Client::Config::keep_alive) -> self
+      def with_channel_arg: (arg: String, value: untyped) -> self
+      def with_config: (config: Inventory::Client::Config::config | Client::Config::grpc_config)-> self
+
+      def build: -> untyped
+    end
+
+    private
+
+    def nil_coalescing: (first: untyped, second: untyped) -> untyped
+  end
+end

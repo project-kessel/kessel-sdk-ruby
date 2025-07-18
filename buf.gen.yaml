@@ -1,7 +1,7 @@
 version: v2
 inputs:
   - module: buf.build/project-kessel/inventory-api
-  - module: buf.build/bufbuild/protovalidate
+  - module: buf.build/bufbuild/protovalidate:v0.14.1
 plugins:
   # Generate Ruby message classes
   - remote: buf.build/protocolbuffers/ruby:v31.1

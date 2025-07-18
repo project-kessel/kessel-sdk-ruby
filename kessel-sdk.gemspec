@@ -20,9 +20,12 @@ Gem::Specification.new do |spec|
   # Runtime dependencies
   spec.add_dependency 'grpc', '~> 1.73.0'
 
+  # Dev dependencies
+  spec.add_development_dependency 'steep', '~> 1.10.0'
+  spec.add_development_dependency 'typeprof', '~> 0.30.1'
+
   if spec.respond_to? :metadata
     spec.metadata['homepage_uri'] = spec.homepage
-    spec.metadata['source_code_uri'] = 'https://github.com/project-kessel/kessel-sdk-ruby'
     spec.metadata['bug_tracker_uri'] = 'https://github.com/project-kessel/kessel-sdk-ruby/issues'
   end
 end
