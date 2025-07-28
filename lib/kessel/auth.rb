@@ -85,6 +85,7 @@ module Kessel
         @client_id = client_id
         @client_secret = client_secret
         @issuer_url = issuer_url.chomp('/')
+        @token_mutex = Mutex.new
 
         # Discover OIDC configuration automatically
         @discovery_config = discover_configuration
@@ -115,8 +116,10 @@ module Kessel
       # @example
       #   oauth.refresh_token  # Force refresh
       def refresh_token
-        # Clear cached token to force refresh
-        @cached_token = nil
+        @token_mutex.synchronize do
+          # Clear cached token to force refresh
+          @cached_token = nil
+        end
         access_token
       end
 
@@ -180,25 +183,34 @@ module Kessel
 
       # Gets or creates a client credentials token.
       #
+      # Uses double-checked locking pattern for thread safety.
+      #
       # @return [Hash] Hash containing access token and expiration info
       # @api private
       def client_credentials_token
+        # Fast path: check without lock if token is valid
         return @cached_token if @cached_token && token_valid?
 
-        client = create_oidc_client
+        # Slow path: acquire lock and check again
+        @token_mutex.synchronize do
+          # Double-check: another thread might have refreshed the token
+          return @cached_token if @cached_token && token_valid?
 
-        request_params = {
-          grant_type: 'client_credentials',
-          client_id: @client_id,
-          client_secret: @client_secret
-        }
+          client = create_oidc_client
 
-        response = client.access_token!(request_params)
+          request_params = {
+            grant_type: 'client_credentials',
+            client_id: @client_id,
+            client_secret: @client_secret
+          }
 
-        @cached_token = {
-          'access_token' => response.access_token,
-          'expires_at' => Time.now.to_i + (response.expires_in || 3600)
-        }
+          response = client.access_token!(request_params)
+
+          @cached_token = {
+            'access_token' => response.access_token,
+            'expires_at' => Time.now.to_i + (response.expires_in || 3600)
+          }
+        end
       rescue StandardError => e
         raise OAuthAuthenticationError, "Failed to obtain client credentials token: #{e.message}"
       end
@@ -302,10 +314,6 @@ module Kessel
       def add_auth_metadata(metadata)
         token = @oauth_client.access_token
         metadata['authorization'] = "Bearer #{token}"
-      rescue StandardError => e
-        # Let the gRPC call proceed without auth - the server will reject it
-        # This prevents auth failures from completely breaking the client
-        warn "OAuth authentication failed: #{e.message}"
       end
     end
   end
