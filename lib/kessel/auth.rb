@@ -7,14 +7,13 @@ module Kessel
   # OpenID Connect authentication module for Kessel services.
   #
   # This module provides OIDC Client Credentials flow authentication
-  # with automatic discovery. Works seamlessly with Keycloak, Red Hat SSO,
-  # and other OIDC-compliant providers.
+  # with automatic discovery. Works seamlessly with OIDC-compliant providers.
   #
   # @example Basic usage
   #   auth = Kessel::Auth::OAuth.new(
   #     client_id: 'my-app',
   #     client_secret: 'secret',
-  #     issuer_url: 'https://my-domain/auth/realms/redhat-external'
+  #     issuer_url: 'https://my-domain/auth/realms/my-realm'
   #   )
   #   token = auth.access_token
   #
@@ -44,14 +43,14 @@ module Kessel
     # OpenID Connect Client Credentials flow implementation using discovery.
     #
     # This provides a secure OIDC Client Credentials flow implementation with
-    # automatic endpoint discovery. Works seamlessly with Keycloak, Red Hat SSO,
-    # and other OIDC-compliant providers that support discovery.
+    # automatic endpoint discovery. Works seamlessly OIDC-compliant providers
+    # that support discovery.
     #
     # @example
     #   oauth = OAuth.new(
     #     client_id: 'kessel-client',
     #     client_secret: 'super-secret-key',
-    #     issuer_url: 'https://my-domain/auth/realms/redhat-external'
+    #     issuer_url: 'https://my-domain/auth/realms/my-realm'
     #   )
     #
     #   # Get current access token (automatically cached and refreshed)
@@ -70,7 +69,6 @@ module Kessel
       # @param client_id [String] OIDC client identifier
       # @param client_secret [String] OIDC client secret
       # @param issuer_url [String] OIDC issuer URL for automatic discovery
-      # @param scope [String, nil] Optional OAuth scope to request
       #
       # @raise [OAuthDependencyError] if the openid_connect gem is not available
       # @raise [OAuthAuthenticationError] if OIDC discovery fails
@@ -79,15 +77,14 @@ module Kessel
       #   oauth = OAuth.new(
       #     client_id: 'my-app',
       #     client_secret: 'secret',
-      #     issuer_url: 'https://my-domain/auth/realms/redhat-external'
+      #     issuer_url: 'https://my-domain/auth/realms/my-realm'
       #   )
-      def initialize(client_id:, client_secret:, issuer_url:, scope: nil)
+      def initialize(client_id:, client_secret:, issuer_url:)
         check_dependencies!
 
         @client_id = client_id
         @client_secret = client_secret
         @issuer_url = issuer_url.chomp('/')
-        @scope = scope
 
         # Discover OIDC configuration automatically
         @discovery_config = discover_configuration
@@ -195,7 +192,6 @@ module Kessel
           client_id: @client_id,
           client_secret: @client_secret
         }
-        request_params[:scope] = @scope if @scope
 
         response = client.access_token!(request_params)
 
@@ -215,7 +211,7 @@ module Kessel
     # to handle token refresh automatically via OpenID Connect discovery.
     #
     # @example
-    #   oauth = OAuth.new(client_id: 'app', client_secret: 'secret', issuer_url: 'https://my-domain/auth/realms/redhat-external')
+    #   oauth = OAuth.new(client_id: 'app', client_secret: 'secret', issuer_url: 'https://my-domain/auth/realms/my-realm')
     #   interceptor = OAuthInterceptor.new(oauth)
     #
     #   # Use with gRPC client

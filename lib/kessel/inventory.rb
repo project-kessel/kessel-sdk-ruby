@@ -27,7 +27,6 @@ module Kessel
       #   error = IncompleteKesselConfiguration.new(['target'])
       #   error.message # => "IncompleteKesselConfigurationError: Missing the following fields to build: target"
       def initialize(fields)
-        fields.is_a? Array
         super("IncompleteKesselConfigurationError: Missing the following fields to build: #{fields.join(', ')}")
       end
     end

@@ -28,12 +28,6 @@ RSpec.describe Kessel::Inventory do
                              'credentials'
           expect(exception.message).to eq(expected_message)
         end
-
-        it 'validates that fields is an array' do
-          # NOTE: The current implementation has a bug - it checks fields.is_a? Array but doesn't do anything with the result
-          # This test documents the current behavior
-          expect { exception_class.new(missing_fields) }.not_to raise_error
-        end
       end
 
       context 'with a single missing field' do
