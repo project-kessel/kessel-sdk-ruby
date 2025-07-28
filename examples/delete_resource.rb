@@ -1,17 +1,18 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+require 'dotenv/load'
 require 'kessel-sdk'
 
 include Kessel::Inventory::V1beta2
 
 client = KesselInventoryService::ClientBuilder.builder
-                                              .with_target('localhost:9081')
+                                              .with_target(ENV.fetch('KESSEL_ENDPOINT', nil))
                                               .with_insecure_credentials
                                               .build
 
 # or if not using the ClientBuilder...
-# client = KesselInventoryService::Stub.new('localhost:9000', :this_channel_is_insecure)
+# client = KesselInventoryService::Stub.new(ENV["KESSEL_ENDPOINT"], :this_channel_is_insecure)
 
 begin
   response = client.delete_resource(

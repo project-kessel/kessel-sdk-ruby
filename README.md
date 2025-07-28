@@ -1,6 +1,8 @@
 # Kessel SDK for Ruby
 
-A Ruby gRPC library for connecting to [Project Kessel](https://github.com/project-kessel) services. This provides the foundational gRPC client library for Kessel Inventory API, with plans for a higher-level SDK with fluent APIs, OAuth support, and advanced features in future releases.
+A Ruby gRPC library for connecting to [Project Kessel](https://github.com/project-kessel) services. This provides the 
+foundational gRPC client library for Kessel Inventory API, with plans for a higher-level SDK with fluent APIs, 
+OAuth support, and advanced features in future releases.
 
 ## Installation
 
@@ -24,7 +26,75 @@ gem install kessel-sdk
 
 ## Usage
 
-This library provides direct access to Kessel Inventory API gRPC services. All generated classes are available under the `Kessel::Inventory` module.
+This library provides direct access to Kessel API gRPC services. 
+All generated classes are available under the `Kessel::Inventory` module.
+
+### Authentication
+
+The SDK supports OpenID Connect (OIDC) Client Credentials flow with automatic discovery. Works seamlessly with 
+OIDC-compliant providers. Authentication is **completely optional** - install only if you need it.
+
+#### OIDC Setup (Optional)
+
+**Step 1:** Add OIDC dependency to your Gemfile (only if you need authentication):
+
+```ruby
+gem 'kessel-sdk'
+gem 'openid_connect', '~> 2.0'  # Optional - only for OIDC authentication
+```
+
+**Step 2:** Configure OIDC authentication:
+
+```ruby
+require 'kessel-sdk'
+
+include Kessel::Inventory::V1beta2
+
+# Configure OIDC authentication with discovery
+auth = Kessel::Inventory::Client::Config::Auth.new(
+  client_id: 'your-client-id',
+  client_secret: 'your-client-secret',
+  issuer_url: 'https://my-domain/auth/realms/my-realm'  # OIDC discovery URL
+)
+
+# Create authenticated client
+client = KesselInventoryService::ClientBuilder.builder
+  .with_target('localhost:9000')
+  .with_secure_credentials
+  .with_auth(auth)
+  .build
+
+# The client will automatically handle OIDC discovery, token acquisition and refresh
+response = client.check(CheckRequest.new(...))
+```
+
+For a complete OIDC example, see [`examples/oauth_authentication.rb`](examples/auth.rb).
+
+#### Error Handling
+
+OIDC functionality will only fail at runtime if the openid_connect gem is missing or authentication fails:
+
+```ruby
+begin
+  client = builder.with_auth(auth).build
+rescue Kessel::Auth::OAuthDependencyError => e
+  puts "OIDC gem not installed: #{e.message}"
+  # Add gem 'openid_connect', '~> 2.0' to your Gemfile and run bundle install
+rescue Kessel::Auth::OAuthAuthenticationError => e
+  puts "OIDC authentication failed: #{e.message}"
+  # Check credentials, discovery URL, and server configuration
+end
+```
+
+**Without OAuth:** You can use the SDK without OAuth by omitting the `.with_auth()` configuration:
+
+```ruby
+# No OAuth dependency required for basic usage
+client = KesselInventoryService::ClientBuilder.builder
+  .with_target('localhost:9000')
+  .with_insecure_credentials  # or .with_secure_credentials
+  .build
+```
 
 ### Basic Example - Check Permissions
 
@@ -193,7 +263,8 @@ Run examples:
 
 ```bash
 cd examples
-ruby check.rb
+bundle install
+rake check
 ```
 
 ## Roadmap
@@ -201,7 +272,7 @@ ruby check.rb
 This is the foundational gRPC library. Future releases will include:
 
 - **High-level SDK**: Fluent client builder API
-- **Authentication**: OAuth 2.0 Client Credentials flow
+- **Authentication**: OpenID Connect Client Credentials flow with discovery
 - **Convenience Methods**: Simplified APIs for common operations*
 *
 ## Contributing

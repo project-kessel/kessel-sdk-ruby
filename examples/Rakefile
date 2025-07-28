@@ -1,0 +1,33 @@
+# frozen_string_literal: true
+
+FileUtils.cp('.env.sample', '.env') unless File.exist?('.env')
+
+desc 'run check sample'
+task :check do
+  ruby 'check.rb'
+end
+
+desc 'run check_for_update sample'
+task :check_for_update do
+  ruby 'check_for_update.rb'
+end
+
+desc 'run delete_resource sample'
+task :delete_resource do
+  ruby 'delete_resource.rb'
+end
+
+desc 'run report_resource sample'
+task :report_resource do
+  ruby 'report_resource.rb'
+end
+
+desc 'run streamed_list_objects sample'
+task :streamed_list_objects do
+  ruby 'streamed_list_objects.rb'
+end
+
+desc 'run auth sample'
+task :auth do
+  ruby 'auth.rb'
+end

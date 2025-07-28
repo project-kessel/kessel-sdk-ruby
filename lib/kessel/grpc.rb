@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'kessel/inventory'
+require 'kessel/auth'
 require 'grpc'
 
 module Kessel
@@ -81,54 +82,57 @@ module Kessel
       #   health_client = health_builder.builder.with_target('localhost:9000').build
       #   inventory_client = inventory_builder.builder.with_target('localhost:9001').build
       def self.create(service_class)
-        Class.new(ClientBuilder) do
-          @service_class = service_class
+        builder_class = Class.new(ClientBuilder)
+        builder_class.instance_variable_set(:@service_class, service_class)
+        define_class_methods(builder_class)
+        define_instance_methods(builder_class)
+        builder_class
+      end
 
-          # Creates a new builder instance for fluent configuration.
-          #
-          # @return [ClientBuilder] A new builder instance ready for configuration
-          def self.builder
-            new
-          end
+      private_class_method def self.define_class_methods(builder_class)
+        builder_class.define_singleton_method(:builder) { new }
+        builder_class.define_singleton_method(:service_class) { @service_class }
+      end
 
-          class << self
-            # @return [Class] The gRPC service class this builder creates clients for
-            attr_reader :service_class
-          end
+      private_class_method def self.define_instance_methods(builder_class)
+        # Build credentials method
+        builder_class.define_method(:build_credentials) do
+          return :this_channel_is_insecure if @credentials.type == 'insecure'
 
-          # Builds the appropriate gRPC credentials object.
-          #
-          # @return [Symbol, GRPC::Core::ChannelCredentials] Either :this_channel_is_insecure
-          #   for insecure connections or a ChannelCredentials object for secure connections
-          # @api private
-          def build_credentials
-            return :this_channel_is_insecure if @credentials.type == 'insecure'
+          ::GRPC::Core::ChannelCredentials.new(@credentials.root_certs, @credentials.private_certs,
+                                               @credentials.cert_chain)
+        end
 
-            ::GRPC::Core::ChannelCredentials.new(@credentials.root_certs, @credentials.private_certs,
-                                                 @credentials.cert_chain)
-          end
+        define_build_method(builder_class)
 
-          # Builds and returns a configured gRPC client instance.
-          #
-          # @return [Object] A configured gRPC service client
-          # @raise [Kessel::Inventory::IncompleteKesselConfiguration] if required configuration is missing
-          #
-          # @example
-          #   client = builder
-          #     .with_target('localhost:9000')
-          #     .with_insecure_credentials
-          #     .build
-          def build
-            validate
-            interceptors = []
+        # Mark methods as private
+        builder_class.send(:private, :build_credentials)
+      end
 
-            if @auth
-              # Connect oauth interceptor
+      private_class_method def self.define_build_method(builder_class)
+        # Main build method
+        builder_class.define_method(:build) do
+          validate
+          interceptors = []
+
+          if @auth
+            begin
+              oauth_client = Auth::OAuth.new(
+                client_id: @auth.client_id,
+                client_secret: @auth.client_secret,
+                issuer_url: @auth.issuer_url
+              )
+              interceptors << Auth::OAuthInterceptor.new(oauth_client)
+            rescue Auth::OAuthDependencyError => e
+              raise Auth::OAuthDependencyError,
+                    "OIDC authentication requested but openid_connect gem is missing. #{e.message}\n" \
+                    'Add "gem \'openid_connect\'" to your Gemfile or remove OAuth configuration.'
             end
-
-            self.class.service_class.new(@target, build_credentials, channel_args: @channel_args,
-                                                                     interceptors: interceptors)
           end
+
+          self.class.service_class.new(@target, build_credentials,
+                                       channel_args: @channel_args,
+                                       interceptors: interceptors)
         end
       end
 
@@ -208,6 +212,10 @@ module Kessel
 
       # Sets the OAuth authentication configuration.
       #
+      # When OAuth is configured, the client will automatically obtain and refresh
+      # access tokens using the OAuth 2.0 Client Credentials flow. The tokens will
+      # be included in all gRPC requests as Bearer tokens in the Authorization header.
+      #
       # @param auth_config [Inventory::Client::Config::Auth] Authentication configuration
       # @return [self] Returns self for method chaining
       #
@@ -218,6 +226,10 @@ module Kessel
       #     issuer_url: 'https://auth.example.com'
       #   )
       #   builder.with_auth(auth)
+      #
+      # @note OAuth functionality requires standard Ruby libraries (net/http, json, etc.)
+      #   that are included in most Ruby installations. If dependencies are missing,
+      #   an error will be raised when the client is built.
       def with_auth(auth_config)
         @auth = auth_config
         self

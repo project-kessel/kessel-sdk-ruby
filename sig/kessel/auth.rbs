@@ -1,0 +1,45 @@
+module Kessel
+  module Auth
+    # Exception raised when OAuth functionality is requested but dependencies are missing
+    class OAuthDependencyError < StandardError
+      def initialize: (?String message) -> void
+    end
+
+    # Exception raised when OAuth authentication fails
+    class OAuthAuthenticationError < StandardError
+      def initialize: (?String message) -> void
+    end
+
+    # OpenID Connect Client Credentials flow implementation with discovery
+    class OAuth
+      attr_reader client_id: String
+      attr_reader issuer_url: String
+
+      def initialize: (client_id: String, client_secret: String, issuer_url: String, ?scope: String?) -> void
+      def access_token: () -> String
+      def refresh_token: () -> String
+      def token_valid?: () -> bool
+
+      private
+
+      def check_dependencies!: () -> void
+      def discover_configuration: () -> untyped
+      def create_oidc_client: () -> untyped
+      def client_credentials_token: () -> Hash[String, untyped]
+    end
+
+    # gRPC interceptor that adds OIDC Bearer tokens to requests
+    class OAuthInterceptor < GRPC::ClientInterceptor
+      def initialize: (OAuth oauth_client) -> void
+
+      def request_response: (request: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
+      def client_streamer: (requests: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
+      def server_streamer: (request: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
+      def bidi_streamer: (requests: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
+
+      private
+
+      def add_auth_metadata: (Hash[String, String] metadata) -> void
+    end
+  end
+end 
