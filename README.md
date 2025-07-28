@@ -1,7 +1,7 @@
 # Kessel SDK for Ruby
 
 A Ruby gRPC library for connecting to [Project Kessel](https://github.com/project-kessel) services. This provides the 
-foundational gRPC client library for Kessel Inventory API, with plans for a higher-level SDK with fluent APIs, 
+foundational gRPC client library for Kessel API, with plans for a higher-level SDK with fluent APIs, 
 OAuth support, and advanced features in future releases.
 
 ## Installation
@@ -224,13 +224,13 @@ curl -sSL "https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname 
 # Install dependencies
 bundle install
 
-# Generate gRPC code from Kessel Inventory API
+# Generate gRPC code from Kessel API
 buf generate
 ```
 
 ### Code Generation
 
-This library uses [buf](https://buf.build) to generate Ruby gRPC code from the official Kessel Inventory API protobuf definitions hosted at `buf.build/project-kessel/inventory-api`.
+This library uses [buf](https://buf.build) to generate Ruby gRPC code from the official Kessel API protobuf definitions hosted at `buf.build/project-kessel/inventory-api`.
 
 The generation is configured in `buf.gen.yaml`.
 
