@@ -10,9 +10,11 @@ require 'kessel-sdk'
 
 include Kessel::Inventory::V1beta2
 include Kessel::Inventory::Client::Config
+include Kessel::Auth
 
 # Create client with OAuth authentication
 begin
+  discovery = fetch_oidc_discovery(ENV.fetch('AUTH_DISCOVERY_ISSUER_URL', nil))
   client = KesselInventoryService::ClientBuilder.builder
                                                 .with_target(ENV.fetch('KESSEL_ENDPOINT', nil))
                                                 .with_insecure_credentials
@@ -20,7 +22,7 @@ begin
                                                              client_id: ENV.fetch('AUTH_CLIENT_ID', nil),
                                                              client_secret: ENV.fetch('AUTH_CLIENT_SECRET', nil),
                                                              # OIDC discovery endpoint
-                                                             issuer_url: ENV.fetch('AUTH_DISCOVERY_ISSUER_URL', nil)
+                                                             token_endpoint: discovery.token_endpoint,
                                                            ))
                                                 .build
 

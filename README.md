@@ -49,12 +49,16 @@ gem 'openid_connect', '~> 2.0'  # Optional - only for OIDC authentication
 require 'kessel-sdk'
 
 include Kessel::Inventory::V1beta2
+include Kessel::Auth
+
+discovery = fetch_oidc_discovery('https://my-domain/auth/realms/my-realm')
 
 # Configure OIDC authentication with discovery
 auth = Kessel::Inventory::Client::Config::Auth.new(
   client_id: 'your-client-id',
   client_secret: 'your-client-secret',
-  issuer_url: 'https://my-domain/auth/realms/my-realm'  # OIDC discovery URL
+  # or the token endpoint e.g. 'https://my-domain/auth/realms/my-realm/protocol/openid-connect/token'
+  token_endpoint: discovery.token_endpoint
 )
 
 # Create authenticated client

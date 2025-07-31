@@ -1,5 +1,7 @@
 module Kessel
   module Auth
+    OIDCDiscoveryMetadata: untyped
+
     # Exception raised when OAuth functionality is requested but dependencies are missing
     class OAuthDependencyError < StandardError
       def initialize: (?String message) -> void
@@ -10,13 +12,22 @@ module Kessel
       def initialize: (?String message) -> void
     end
 
+    class OIDCDiscoveryMetadata
+      attr_accessor token_endpoint: String
+
+      def initialize: (token_endpoint: String) -> void
+    end
+
+    def fetch_oidc_discovery: (String provider_url) -> OIDCDiscoveryMetadata
+
     # OpenID Connect Client Credentials flow implementation with discovery
     class OAuth
       attr_reader client_id: String
-      attr_reader issuer_url: String
+      attr_reader token_endpoint: String
 
-      def initialize: (client_id: String, client_secret: String, issuer_url: String, ?scope: String?) -> void
-      def access_token: () -> String
+      def initialize: (client_id: String, client_secret: String, token_endpoint: String, ?scope: String?) -> void
+      def token: () -> String
+      def refresh: () -> untyped
       def refresh_token: () -> String
       def token_valid?: () -> bool
 
@@ -42,4 +53,4 @@ module Kessel
       def add_auth_metadata: (Hash[String, String] metadata) -> void
     end
   end
-end 
+end

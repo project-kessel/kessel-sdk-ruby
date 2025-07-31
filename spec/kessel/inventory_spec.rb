@@ -74,11 +74,11 @@ RSpec.describe Kessel::Inventory do
       end
 
       it 'defines Auth struct with correct attributes' do
-        auth = config_module::Auth.new('client_id', 'client_secret', 'https://issuer.com')
+        auth = config_module::Auth.new('client_id', 'client_secret', 'https://issuer.com/protocol/openid-connect/token')
 
         expect(auth.client_id).to eq('client_id')
         expect(auth.client_secret).to eq('client_secret')
-        expect(auth.issuer_url).to eq('https://issuer.com')
+        expect(auth.token_endpoint).to eq('https://issuer.com/protocol/openid-connect/token')
       end
 
       it 'defines Config struct with correct attributes' do

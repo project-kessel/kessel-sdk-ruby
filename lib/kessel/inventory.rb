@@ -91,16 +91,16 @@ module Kessel
         #   @return [String] OAuth client identifier
         # @!attribute client_secret
         #   @return [String] OAuth client secret
-        # @!attribute issuer_url
-        #   @return [String] OAuth issuer URL for token endpoint discovery
+        # @!attribute token_endpoint
+        #   @return [String] OAuth token endpoint URL
         #
         # @example
         #   auth = Auth.new(
         #     client_id: "my-app-id",
         #     client_secret: "my-app-secret",
-        #     issuer_url: "https://auth.kessel.example.com"
+        #     token_endpoint: "https://auth.kessel.example.com/protocol/openid-connect/token"
         #   )
-        Auth = Struct.new(:client_id, :client_secret, :issuer_url)
+        Auth = Struct.new(:client_id, :client_secret, :token_endpoint)
 
         # Complete client configuration structure.
         #
@@ -121,7 +121,7 @@ module Kessel
         #     target: "kessel.example.com:443",
         #     credentials: Credentials.new(type: "secure"),
         #     keep_alive: KeepAlive.new(time_ms: 10000),
-        #     auth: Auth.new(client_id: "app", client_secret: "secret", issuer_url: "https://auth.example.com")
+        #     auth: Auth.new(client_id: "app", client_secret: "secret", token_endpoint: "https://auth.example.com/protocol/openid-connect/token")
         #   )
         Config = Struct.new(:target, :credentials, :keep_alive, :auth)
 

@@ -64,11 +64,11 @@ module Kessel
           # The OAuth client secret.
           attr_accessor client_secret: String
 
-          # The OAuth issuer URL for discovery.
-          # @example "https://auth.example.com"
-          attr_accessor issuer_url: String
+          # The OAuth token endpoint URL.
+          # @example "https://auth.example.com/protocol/openid-connect/token"
+          attr_accessor token_endpoint: String
 
-          def initialize: (?client_id: String?, ?client_secret: String?, ?issuer_url: String?) -> void
+          def initialize: (?client_id: String?, ?client_secret: String?, ?token_endpoint: String?) -> void
         end
 
         class Config

@@ -13,7 +13,7 @@ module Kessel
   #   auth = Kessel::Auth::OAuth.new(
   #     client_id: 'my-app',
   #     client_secret: 'secret',
-  #     issuer_url: 'https://my-domain/auth/realms/my-realm'
+  #     token_endpoint: 'https://my-domain/auth/realms/my-realm/protocol/openid-connect/token'
   #   )
   #   token = auth.access_token
   #
@@ -40,6 +40,27 @@ module Kessel
       end
     end
 
+    OIDCDiscoveryMetadata = Struct.new(:token_endpoint)
+
+    def fetch_oidc_discovery(provider_url)
+      check_dependencies!
+      discovery = ::OpenIDConnect::Discovery::Provider::Config.discover!(provider_url)
+      OIDCDiscoveryMetadata.new(discovery.token_endpoint)
+    rescue StandardError => e
+      raise OAuthAuthenticationError, "Failed to discover OIDC configuration from #{provider_url}: #{e.message}"
+    end
+
+    # Checks if the openid_connect gem is available.
+    #
+    # @raise [OAuthDependencyError] if openid_connect gem is missing
+    # @api private
+    private def check_dependencies!
+      require 'openid_connect'
+    rescue LoadError
+      raise OAuthDependencyError,
+            'OAuth functionality requires the openid_connect gem. Add "gem \'openid_connect\'" to your Gemfile.'
+    end
+
     # OpenID Connect Client Credentials flow implementation using discovery.
     #
     # This provides a secure OIDC Client Credentials flow implementation with
@@ -50,45 +71,44 @@ module Kessel
     #   oauth = OAuth.new(
     #     client_id: 'kessel-client',
     #     client_secret: 'super-secret-key',
-    #     issuer_url: 'https://my-domain/auth/realms/my-realm'
+    #     token_endpoint: 'https://my-domain/auth/realms/my-realm/protocol/openid-connect/token'
     #   )
     #
     #   # Get current access token (automatically cached and refreshed)
     #   token = oauth.access_token
     class OAuth
+      include Kessel::Auth
+
       # OAuth client identifier.
       # @return [String] The client ID
       attr_reader :client_id
 
       # OIDC issuer URL for discovery.
       # @return [String] The issuer URL
-      attr_reader :issuer_url
+      attr_reader :token_endpoint
 
-      # Creates a new OIDC client with automatic discovery.
+      # Creates a new OIDC client with specified token endpoint.
       #
       # @param client_id [String] OIDC client identifier
       # @param client_secret [String] OIDC client secret
-      # @param issuer_url [String] OIDC issuer URL for automatic discovery
+      # @param token_endpoint [String] OIDC token endpoint URL
       #
       # @raise [OAuthDependencyError] if the openid_connect gem is not available
-      # @raise [OAuthAuthenticationError] if OIDC discovery fails
+      # @raise [OAuthAuthenticationError] if authentication fails
       #
       # @example
       #   oauth = OAuth.new(
       #     client_id: 'my-app',
       #     client_secret: 'secret',
-      #     issuer_url: 'https://my-domain/auth/realms/my-realm'
+      #     token_endpoint: 'https://my-domain/auth/realms/my-realm/protocol/openid-connect/token'
       #   )
-      def initialize(client_id:, client_secret:, issuer_url:)
+      def initialize(client_id:, client_secret:, token_endpoint:)
         check_dependencies!
 
         @client_id = client_id
         @client_secret = client_secret
-        @issuer_url = issuer_url.chomp('/')
+        @token_endpoint = token_endpoint
         @token_mutex = Mutex.new
-
-        # Discover OIDC configuration automatically
-        @discovery_config = discover_configuration
       end
 
       # Gets the current access token with automatic caching and refresh.
@@ -102,11 +122,25 @@ module Kessel
       # @example
       #   token = oauth.access_token
       #   # Use token in Authorization header: "Bearer #{token}"
-      def access_token
+      def token
         client_credentials_token['access_token']
       rescue StandardError => e
         raise OAuthAuthenticationError, "Failed to obtain OAuth token: #{e.message}"
       end
+
+      def refresh
+        client = create_oidc_client
+
+        request_params = {
+          grant_type: 'client_credentials',
+          client_id: @client_id,
+          client_secret: @client_secret
+        }
+
+        client.access_token!(request_params)
+      end
+
+      private
 
       # Forces a token refresh.
       #
@@ -120,7 +154,7 @@ module Kessel
           # Clear cached token to force refresh
           @cached_token = nil
         end
-        access_token
+        token
       end
 
       # Checks if we have a valid cached token.
@@ -137,47 +171,15 @@ module Kessel
         false
       end
 
-      private
-
-      # Checks if the openid_connect gem is available.
-      #
-      # @raise [OAuthDependencyError] if openid_connect gem is missing
-      # @api private
-      def check_dependencies!
-        require 'openid_connect'
-      rescue LoadError
-        raise OAuthDependencyError,
-              'OAuth functionality requires the openid_connect gem. Add "gem \'openid_connect\'" to your Gemfile.'
-      end
-
-      # Discovers OIDC configuration from the issuer.
-      #
-      # @return [OpenIDConnect::Discovery::Provider::Config] Discovery configuration
-      # @raise [OAuthAuthenticationError] if discovery fails
-      # @api private
-      def discover_configuration
-        ::OpenIDConnect::Discovery::Provider::Config.discover!(@issuer_url)
-      rescue StandardError => e
-        raise OAuthAuthenticationError, "Failed to discover OIDC configuration from #{@issuer_url}: #{e.message}"
-      end
-
       # Creates an OIDC client using discovered configuration.
       #
       # @return [OpenIDConnect::Client] Configured OIDC client
       # @api private
       def create_oidc_client
-        issuer_uri = URI.parse(@discovery_config.issuer)
-
         ::OpenIDConnect::Client.new(
           identifier: @client_id,
           secret: @client_secret,
-          authorization_endpoint: @discovery_config.authorization_endpoint,
-          token_endpoint: @discovery_config.token_endpoint,
-          userinfo_endpoint: @discovery_config.userinfo_endpoint,
-          jwks_uri: @discovery_config.jwks_uri,
-          host: issuer_uri.host,
-          scheme: issuer_uri.scheme,
-          port: issuer_uri.port
+          token_endpoint: @token_endpoint,
         )
       end
 
@@ -196,15 +198,7 @@ module Kessel
           # Double-check: another thread might have refreshed the token
           return @cached_token if @cached_token && token_valid?
 
-          client = create_oidc_client
-
-          request_params = {
-            grant_type: 'client_credentials',
-            client_id: @client_id,
-            client_secret: @client_secret
-          }
-
-          response = client.access_token!(request_params)
+          response = refresh
 
           @cached_token = {
             'access_token' => response.access_token,
@@ -223,7 +217,7 @@ module Kessel
     # to handle token refresh automatically via OpenID Connect discovery.
     #
     # @example
-    #   oauth = OAuth.new(client_id: 'app', client_secret: 'secret', issuer_url: 'https://my-domain/auth/realms/my-realm')
+    #   oauth = OAuth.new(client_id: 'app', client_secret: 'secret', token_endpoint: 'https://my-domain/auth/realms/my-realm/protocol/openid-connect/token')
     #   interceptor = OAuthInterceptor.new(oauth)
     #
     #   # Use with gRPC client
@@ -234,7 +228,7 @@ module Kessel
       # @param oauth_client [OAuth] The OAuth client to use for authentication
       #
       # @example
-      #   oauth = OAuth.new(client_id: 'app', client_secret: 'secret', issuer_url: 'https://auth.com')
+      #   oauth = OAuth.new(client_id: 'app', client_secret: 'secret', token_endpoint: 'https://auth.com/protocol/openid-connect/token')
       #   interceptor = OAuthInterceptor.new(oauth)
       def initialize(oauth_client)
         @oauth_client = oauth_client
@@ -312,7 +306,7 @@ module Kessel
       # @param metadata [Hash] The request metadata hash to modify
       # @api private
       def add_auth_metadata(metadata)
-        token = @oauth_client.access_token
+        token = @oauth_client.token
         metadata['authorization'] = "Bearer #{token}"
       end
     end

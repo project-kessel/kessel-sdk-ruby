@@ -120,7 +120,7 @@ module Kessel
               oauth_client = Auth::OAuth.new(
                 client_id: @auth.client_id,
                 client_secret: @auth.client_secret,
-                issuer_url: @auth.issuer_url
+                token_endpoint: @auth.token_endpoint,
               )
               interceptors << Auth::OAuthInterceptor.new(oauth_client)
             rescue Auth::OAuthDependencyError => e
@@ -223,7 +223,7 @@ module Kessel
       #   auth = Inventory::Client::Config::Auth.new(
       #     client_id: 'my-app',
       #     client_secret: 'secret',
-      #     issuer_url: 'https://auth.example.com'
+      #     token_endpoint: 'https://auth.example.com/protocol/openid-connect/token'
       #   )
       #   builder.with_auth(auth)
       #
