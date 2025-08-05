@@ -1,0 +1,59 @@
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - 'vendor/**/*'
+    - 'bin/**/*'
+    - 'pkg/**/*'
+    - 'coverage/**/*'
+    - 'doc/**/*'
+    - 'lib/google/**/*'    # Generated protobuf files
+    - 'lib/buf/**/*'       # Generated protobuf files
+    - 'lib/kessel/inventory/v*/**/*'  # Generated protobuf files
+    - 'examples/**/*'      # Example files for demo purposes
+
+# Allow longer lines for generated code and documentation
+Layout/LineLength:
+  Max: 120
+  Exclude:
+    - 'kessel-sdk.gemspec'
+
+# Allow longer methods for generated code
+Metrics/MethodLength:
+  Max: 25
+
+# Allow longer classes for generated code
+Metrics/ClassLength:
+  Max: 150
+
+# Allow complex methods for generated code
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+# Allow more parameters for generated code
+Metrics/ParameterLists:
+  Max: 8
+
+# Disable documentation requirements for now
+Style/Documentation:
+  Enabled: false
+
+# Allow top-level require statements
+Style/MixinUsage:
+  Enabled: false
+
+# Allow filename with dashes for main entry point
+Naming/FileName:
+  Exclude:
+    - 'lib/kessel-sdk.rb'
+
+# Allow longer blocks in spec files and gemspec
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - '*.gemspec'
+
+# Disable development dependency warnings for now
+Gemspec/DevelopmentDependencies:
+  Enabled: false

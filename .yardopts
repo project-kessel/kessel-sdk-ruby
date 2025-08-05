@@ -1,0 +1,16 @@
+--markup markdown
+--markup-provider redcarpet
+--output-dir doc/api
+--private
+--title "Kessel SDK for Ruby API Documentation"
+--readme README.md
+--files LICENSE
+--exclude "lib/buf/**/*"
+--exclude "lib/google/**/*"
+--exclude "lib/**/*_pb.rb"
+--exclude "lib/**/*_services_pb.rb"
+lib/kessel/inventory.rb
+lib/kessel/grpc.rb
+lib/kessel/inventory.rb
+lib/kessel/version.rb
+lib/kessel-sdk.rb
