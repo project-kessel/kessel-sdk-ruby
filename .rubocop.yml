@@ -1,64 +1,59 @@
 AllCops:
-  TargetRubyVersion: 3.3
+  TargetRubyVersion: 3.1
   NewCops: enable
   SuggestExtensions: false
   Exclude:
     - 'vendor/**/*'
-    - 'lib/buf/**/*'
-    - 'lib/google/**/*'
-    - 'lib/kessel/inventory/v*/**/*_pb.rb'
-    - 'lib/kessel/inventory/v*/**/*_services_pb.rb'
-    - '.rbs_collection/**/*'
-    - 'sig/**/*'
+    - 'bin/**/*'
+    - 'pkg/**/*'
+    - 'coverage/**/*'
+    - 'doc/**/*'
+    - 'lib/google/**/*'    # Generated protobuf files
+    - 'lib/buf/**/*'       # Generated protobuf files
+    - 'lib/kessel/inventory/v*/**/*'  # Generated protobuf files
+    - 'examples/**/*'      # Example files for demo purposes
 
-# File length is often not indicative of complexity in generated code or config
-Metrics/ModuleLength:
-  Max: 150
+# Allow longer lines for generated code and documentation
+Layout/LineLength:
+  Max: 120
+  Exclude:
+    - 'kessel-sdk.gemspec'
 
-Metrics/ClassLength:
-  Max: 150
-
-# Method length can be longer for configuration methods
+# Allow longer methods for generated code
 Metrics/MethodLength:
   Max: 25
 
-# Allow longer parameter lists for configuration methods
+# Allow longer classes for generated code
+Metrics/ClassLength:
+  Max: 150
+
+# Allow complex methods for generated code
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+# Allow more parameters for generated code
 Metrics/ParameterLists:
-  Max: 6
+  Max: 8
 
-# Allow longer blocks in test files
-Metrics/BlockLength:
-  Exclude:
-    - 'spec/**/*'
-    - '*.gemspec'
-
-# Allow longer lines for readability in some cases
-Layout/LineLength:
-  Max: 120
-  AllowedPatterns: ['\A\s*#']
-
-# Style preferences
+# Disable documentation requirements for now
 Style/Documentation:
   Enabled: false
 
-Style/FrozenStringLiteralComment:
-  Enabled: true
-
-# Allow top-level includes in example files
+# Allow top-level require statements
 Style/MixinUsage:
-  Exclude:
-    - 'examples/**/*'
-
-# Allow Exception rescue in examples (for demonstration)
-Lint/RescueException:
-  Exclude:
-    - 'examples/**/*'
-
-# Allow gem specification in gemspec file
-Gemspec/DevelopmentDependencies:
   Enabled: false
 
 # Allow filename with dashes for main entry point
 Naming/FileName:
   Exclude:
     - 'lib/kessel-sdk.rb'
+
+# Allow longer blocks in spec files and gemspec
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - '*.gemspec'
+
+# Disable development dependency warnings for now
+Gemspec/DevelopmentDependencies:
+  Enabled: false

@@ -1,5 +1,7 @@
 # Kessel SDK for Ruby
 
+[![CI](https://github.com/project-kessel/kessel-sdk-ruby/actions/workflows/ci.yml/badge.svg)](https://github.com/project-kessel/kessel-sdk-ruby/actions/workflows/ci.yml)
+
 A Ruby gRPC library for connecting to [Project Kessel](https://github.com/project-kessel) services. This provides the foundational gRPC client library for Kessel Inventory API, with plans for a higher-level SDK with fluent APIs, OAuth support, and advanced features in future releases.
 
 ## Installation
