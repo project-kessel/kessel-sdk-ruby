@@ -72,7 +72,7 @@ client = KesselInventoryService::ClientBuilder.builder
 response = client.check(CheckRequest.new(...))
 ```
 
-For a complete OIDC example, see [`examples/oauth_authentication.rb`](examples/auth.rb).
+For a complete OIDC example, see [`examples/auth.rb`](examples/auth.rb).
 
 #### Error Handling
 

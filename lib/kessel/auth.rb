@@ -15,7 +15,7 @@ module Kessel
   #     client_secret: 'secret',
   #     token_endpoint: 'https://my-domain/auth/realms/my-realm/protocol/openid-connect/token'
   #   )
-  #   token = auth.access_token
+  #   token = auth.token
   #
   # @author Project Kessel
   # @since 1.0.0
@@ -41,6 +41,7 @@ module Kessel
     end
 
     OIDCDiscoveryMetadata = Struct.new(:token_endpoint)
+    RefreshTokenResponse = Struct.new(:access_token, :expires_in)
 
     def fetch_oidc_discovery(provider_url)
       check_dependencies!
@@ -75,7 +76,7 @@ module Kessel
     #   )
     #
     #   # Get current access token (automatically cached and refreshed)
-    #   token = oauth.access_token
+    #   token = oauth.token
     class OAuth
       include Kessel::Auth
 
@@ -120,7 +121,7 @@ module Kessel
       # @raise [OAuthAuthenticationError] if token acquisition fails
       #
       # @example
-      #   token = oauth.access_token
+      #   token = oauth.token
       #   # Use token in Authorization header: "Bearer #{token}"
       def token
         client_credentials_token['access_token']
@@ -137,7 +138,11 @@ module Kessel
           client_secret: @client_secret
         }
 
-        client.access_token!(request_params)
+        token_data = client.access_token!(request_params)
+        RefreshTokenResponse.new(
+          access_token: token_data.access_token,
+          expires_in: token_data.expires_in,
+        )
       end
 
       private

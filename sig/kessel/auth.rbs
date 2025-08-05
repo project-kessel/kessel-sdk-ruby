@@ -12,6 +12,13 @@ module Kessel
       def initialize: (?String message) -> void
     end
 
+    class RefreshTokenResponse
+      attr_accessor access_token: String
+      attr_accessor expires_in: int
+
+      def initialize: (access_token: String, expires_in: int) -> void
+    end
+
     class OIDCDiscoveryMetadata
       attr_accessor token_endpoint: String
 
@@ -27,7 +34,7 @@ module Kessel
 
       def initialize: (client_id: String, client_secret: String, token_endpoint: String, ?scope: String?) -> void
       def token: () -> String
-      def refresh: () -> untyped
+      def refresh: () -> RefreshTokenResponse
       def refresh_token: () -> String
       def token_valid?: () -> bool
 
