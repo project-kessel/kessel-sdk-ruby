@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+gem 'dotenv'
+gem 'kessel-sdk', path: '..'
+gem 'openid_connect', '~> 2.0'

@@ -1,3 +1,11 @@
-Dir.glob(File.join(__dir__, '**', '*_services_pb.rb')).sort.each do |file|
-  require file.sub(__dir__ + File::SEPARATOR, '')
-end
+# frozen_string_literal: true
+
+require 'kessel/version'
+require 'kessel/inventory'
+require 'kessel/grpc'
+require 'kessel/auth'
+
+# Load version-specific modules
+require 'kessel/inventory/v1'
+require 'kessel/inventory/v1beta1'
+require 'kessel/inventory/v1beta2'
