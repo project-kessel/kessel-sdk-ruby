@@ -1,0 +1,64 @@
+AllCops:
+  TargetRubyVersion: 3.3
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - 'vendor/**/*'
+    - 'lib/buf/**/*'
+    - 'lib/google/**/*'
+    - 'lib/kessel/inventory/v*/**/*_pb.rb'
+    - 'lib/kessel/inventory/v*/**/*_services_pb.rb'
+    - '.rbs_collection/**/*'
+    - 'sig/**/*'
+
+# File length is often not indicative of complexity in generated code or config
+Metrics/ModuleLength:
+  Max: 150
+
+Metrics/ClassLength:
+  Max: 150
+
+# Method length can be longer for configuration methods
+Metrics/MethodLength:
+  Max: 25
+
+# Allow longer parameter lists for configuration methods
+Metrics/ParameterLists:
+  Max: 6
+
+# Allow longer blocks in test files
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - '*.gemspec'
+
+# Allow longer lines for readability in some cases
+Layout/LineLength:
+  Max: 120
+  AllowedPatterns: ['\A\s*#']
+
+# Style preferences
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+
+# Allow top-level includes in example files
+Style/MixinUsage:
+  Exclude:
+    - 'examples/**/*'
+
+# Allow Exception rescue in examples (for demonstration)
+Lint/RescueException:
+  Exclude:
+    - 'examples/**/*'
+
+# Allow gem specification in gemspec file
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+# Allow filename with dashes for main entry point
+Naming/FileName:
+  Exclude:
+    - 'lib/kessel-sdk.rb'
