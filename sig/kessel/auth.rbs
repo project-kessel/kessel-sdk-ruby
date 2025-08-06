@@ -1,0 +1,62 @@
+module Kessel
+  module Auth
+    # Exception raised when OAuth functionality is requested but dependencies are missing
+    class OAuthDependencyError < StandardError
+      def initialize: (?String message) -> void
+    end
+
+    # Exception raised when OAuth authentication fails
+    class OAuthAuthenticationError < StandardError
+      def initialize: (?String message) -> void
+    end
+
+    # Structure containing OIDC discovery metadata
+    class OIDCDiscoveryMetadata
+      attr_accessor token_endpoint: String
+
+      def initialize: (String token_endpoint) -> void
+    end
+
+    # Response structure for OAuth token refresh
+    class RefreshTokenResponse
+      attr_accessor access_token: String
+      attr_accessor expires_in: Integer
+
+      def initialize: (String access_token, Integer expires_in) -> void
+    end
+
+    # Module method for performing OIDC discovery
+    def fetch_oidc_discovery: (String provider_url) -> OIDCDiscoveryMetadata
+
+    # OpenID Connect Client Credentials flow implementation
+    class OAuth
+      attr_reader client_id: String
+      attr_reader token_endpoint: String
+
+      def initialize: (client_id: String, client_secret: String, token_endpoint: String) -> void
+      def token: () -> String
+      def refresh: () -> RefreshTokenResponse
+      def token_valid?: () -> bool
+
+      private
+
+      def check_dependencies!: () -> void
+      def create_oidc_client: () -> untyped
+      def client_credentials_token: () -> Hash[String, untyped]
+    end
+
+    # gRPC interceptor that adds OIDC Bearer tokens to requests
+    class OAuthInterceptor < GRPC::ClientInterceptor
+      def initialize: (OAuth oauth_client) -> void
+
+      def request_response: (request: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
+      def client_streamer: (requests: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
+      def server_streamer: (request: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
+      def bidi_streamer: (requests: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
+
+      private
+
+      def add_auth_metadata: (Hash[String, String] metadata) -> void
+    end
+  end
+end 

@@ -1,0 +1,5 @@
+module Kessel
+  module Inventory
+    VERSION: String
+  end
+end 

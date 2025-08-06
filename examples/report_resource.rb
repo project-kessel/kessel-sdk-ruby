@@ -1,12 +1,13 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+require 'dotenv/load'
 require 'json'
 require 'kessel-sdk'
 
 include Kessel::Inventory::V1beta2
 
-client = KesselInventoryService::Stub.new('localhost:9000', :this_channel_is_insecure)
+client = KesselInventoryService::Stub.new(ENV.fetch('KESSEL_ENDPOINT', nil), :this_channel_is_insecure)
 
 common = Google::Protobuf::Struct.decode_json({ 'workspace_id' => '6eb10953-4ec9-4feb-838f-ba43a60880bf' }.to_json)
 

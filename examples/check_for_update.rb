@@ -1,11 +1,12 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+require 'dotenv/load'
 require 'kessel-sdk'
 
 include Kessel::Inventory::V1beta2
 
-client = KesselInventoryService::Stub.new('localhost:9000', :this_channel_is_insecure)
+client = KesselInventoryService::Stub.new(ENV.fetch('KESSEL_ENDPOINT', nil), :this_channel_is_insecure)
 
 subject_reference = SubjectReference.new(
   resource: ResourceReference.new(

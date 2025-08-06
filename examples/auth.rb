@@ -5,8 +5,9 @@ require 'dotenv/load'
 require 'kessel-sdk'
 
 include Kessel::Inventory::V1beta2
+include Kessel::GRPC
+include Kessel::Auth
 
-client = KesselInventoryService::Stub.new(ENV.fetch('KESSEL_ENDPOINT', nil), :this_channel_is_insecure)
 
 subject_reference = SubjectReference.new(
   resource: ResourceReference.new(
@@ -27,6 +28,20 @@ resource = ResourceReference.new(
 )
 
 begin
+  discovery = fetch_oidc_discovery(ENV.fetch('AUTH_DISCOVERY_ISSUER_URL', nil))
+  oauth = OAuth2ClientCredentials.new(
+    client_id: ENV.fetch('AUTH_CLIENT_ID', nil),
+    client_secret: ENV.fetch('AUTH_CLIENT_SECRET', nil),
+    token_endpoint: discovery.token_endpoint,
+  )
+
+  # Set GRPC_DEFAULT_SSL_ROOTS_FILE_PATH if testing locally
+  # e.g. GRPC_DEFAULT_SSL_ROOTS_FILE_PATH="$(mkcert -CAROOT)/rootCA.pem"
+  credentials = GRPC::Core::ChannelCredentials.new
+  credentials = credentials.compose(oauth2_call_credentials(oauth))
+
+  client = KesselInventoryService::Stub.new(ENV.fetch('KESSEL_ENDPOINT', nil), credentials)
+
   response = client.check(
     CheckRequest.new(
       object: resource,
