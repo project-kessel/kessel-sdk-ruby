@@ -145,6 +145,8 @@ module Kessel
         end
       end
 
+      private
+
       def refresh
         client = create_oidc_client
 

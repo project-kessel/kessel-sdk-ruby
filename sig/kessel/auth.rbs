@@ -37,11 +37,11 @@ module Kessel
 
       def initialize: (client_id: String, client_secret: String, token_endpoint: String) -> void
       def get_token: (?force_refresh: bool) -> RefreshTokenResponse
-      def refresh: () -> RefreshTokenResponse
       def token_valid?: () -> bool
 
       private
 
+      def refresh: () -> RefreshTokenResponse
       def create_oidc_client: () -> untyped
     end
   end

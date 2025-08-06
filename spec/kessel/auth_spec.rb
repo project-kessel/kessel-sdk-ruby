@@ -182,7 +182,7 @@ RSpec.describe Kessel::Auth do
       end
 
       it 'returns RefreshTokenResponse with new token data' do
-        result = oauth.refresh
+        result = oauth.send(:refresh)
 
         expect(result).to be_a(Kessel::Auth::RefreshTokenResponse)
         expect(result.access_token).to eq('test-token')
@@ -196,7 +196,7 @@ RSpec.describe Kessel::Auth do
                                                               client_secret: client_secret
                                                             })
 
-        oauth.refresh
+        oauth.send(:refresh)
       end
 
       context 'when refresh fails' do
@@ -206,7 +206,7 @@ RSpec.describe Kessel::Auth do
 
         it 'raises StandardError' do
           expect do
-            oauth.refresh
+            oauth.send(:refresh)
           end.to raise_error(StandardError, 'Refresh failed')
         end
       end
