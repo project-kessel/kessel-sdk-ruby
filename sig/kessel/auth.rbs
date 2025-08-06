@@ -11,52 +11,38 @@ module Kessel
     end
 
     # Structure containing OIDC discovery metadata
-    class OIDCDiscoveryMetadata
+    class OIDCDiscoveryMetadata < Struct
       attr_accessor token_endpoint: String
-
       def initialize: (String token_endpoint) -> void
     end
 
     # Response structure for OAuth token refresh
-    class RefreshTokenResponse
+    class RefreshTokenResponse < Struct
       attr_accessor access_token: String
-      attr_accessor expires_in: Integer
-
-      def initialize: (String access_token, Integer expires_in) -> void
+      attr_accessor expires_at: Integer
+      def initialize: (String access_token, Integer expires_at) -> void
     end
 
     # Module method for performing OIDC discovery
     def fetch_oidc_discovery: (String provider_url) -> OIDCDiscoveryMetadata
 
+    # Checks if the openid_connect gem is available
+    private
+    def check_dependencies!: () -> void
+
     # OpenID Connect Client Credentials flow implementation
-    class OAuth
+    class OAuth2ClientCredentials
       attr_reader client_id: String
       attr_reader token_endpoint: String
 
       def initialize: (client_id: String, client_secret: String, token_endpoint: String) -> void
-      def token: () -> String
+      def get_token: (?force_refresh: bool) -> RefreshTokenResponse
       def refresh: () -> RefreshTokenResponse
       def token_valid?: () -> bool
 
       private
 
-      def check_dependencies!: () -> void
       def create_oidc_client: () -> untyped
-      def client_credentials_token: () -> Hash[String, untyped]
-    end
-
-    # gRPC interceptor that adds OIDC Bearer tokens to requests
-    class OAuthInterceptor < GRPC::ClientInterceptor
-      def initialize: (OAuth oauth_client) -> void
-
-      def request_response: (request: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
-      def client_streamer: (requests: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
-      def server_streamer: (request: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
-      def bidi_streamer: (requests: untyped, call: untyped, method: String, metadata: Hash[String, String]) -> untyped
-
-      private
-
-      def add_auth_metadata: (Hash[String, String] metadata) -> void
     end
   end
 end 

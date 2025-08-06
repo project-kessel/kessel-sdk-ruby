@@ -1,40 +1,5 @@
 module Kessel
   module GRPC
-    module Client
-      module Config
-        # GRPC configuration structure
-        class GRPCConfig
-          attr_accessor target: String
-          attr_accessor credentials: untyped
-          attr_accessor keep_alive: Hash[Symbol, untyped]?
-          attr_accessor auth: Hash[Symbol, untyped]?
-          attr_accessor channel_args: Hash[Symbol, untyped]?
-
-          def initialize: (String target, untyped credentials, ?Hash[Symbol, untyped]? keep_alive, ?Hash[Symbol, untyped]? auth, ?Hash[Symbol, untyped]? channel_args) -> void
-        end
-      end
-    end
-
-    # Base client builder class
-    class ClientBuilder
-      def self.create: (untyped service_class) -> Class
-
-      def initialize: () -> void
-      def with_target: (String target) -> self
-      def with_insecure_credentials: () -> self
-      def with_secure_credentials: (?String? root_certs, ?String? private_key, ?String? cert_chain) -> self
-      def with_credentials_config: (Kessel::Inventory::Client::Config::CredentialsInsecure | Kessel::Inventory::Client::Config::CredentialsSecure credentials) -> self
-      def with_keep_alive: (?time_ms: Integer?, ?timeout_ms: Integer?, ?permit_without_calls: bool?) -> self
-      def with_auth: (Kessel::Inventory::Client::Config::Auth auth_config) -> self
-      def with_channel_arg: (Symbol key, untyped value) -> self
-      def with_config: (Kessel::Inventory::Client::Config::Config config) -> self
-      def build: () -> untyped
-
-      private
-
-      def validate: () -> self
-      def build_credentials: () -> untyped
-      def nil_coalescing: (untyped value, untyped default) -> untyped
-    end
+    def oauth2_call_credentials: (Auth::OAuth2ClientCredentials auth) -> ::GRPC::Core::CallCredentials
   end
-end 
+end
