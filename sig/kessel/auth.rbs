@@ -19,7 +19,7 @@ module Kessel
     # Response structure for OAuth token refresh
     class RefreshTokenResponse < Struct
       attr_accessor access_token: String
-      attr_accessor expires_at: Integer
+      attr_accessor expires_at: Time
       def initialize: (String access_token, Integer expires_at) -> void
     end
 

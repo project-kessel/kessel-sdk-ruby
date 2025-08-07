@@ -62,17 +62,17 @@ RSpec.describe Kessel::Auth do
 
   describe 'RefreshTokenResponse' do
     it 'stores access token and expires_at' do
-      response = Kessel::Auth::RefreshTokenResponse.new('token123', Time.now.to_i + 3600)
+      response = Kessel::Auth::RefreshTokenResponse.new('token123', Time.now + 3600)
       expect(response.access_token).to eq('token123')
-      expect(response.expires_at).to be_a(Integer)
+      expect(response.expires_at).to be_a(Time)
     end
 
     it 'allows setting attributes' do
-      response = Kessel::Auth::RefreshTokenResponse.new('token123', Time.now.to_i + 3600)
+      response = Kessel::Auth::RefreshTokenResponse.new('token123', Time.now + 3600)
       response.access_token = 'new_token'
-      response.expires_at = Time.now.to_i + 7200
+      response.expires_at = Time.now + 7200
       expect(response.access_token).to eq('new_token')
-      expect(response.expires_at).to be_a(Integer)
+      expect(response.expires_at).to be_a(Time)
     end
   end
 
@@ -186,7 +186,7 @@ RSpec.describe Kessel::Auth do
 
         expect(result).to be_a(Kessel::Auth::RefreshTokenResponse)
         expect(result.access_token).to eq('test-token')
-        expect(result.expires_at).to be_a(Integer)
+        expect(result.expires_at).to be_a(Time)
       end
 
       it 'calls access_token! with correct parameters' do
@@ -224,7 +224,7 @@ RSpec.describe Kessel::Auth do
       context 'when token is valid' do
         before do
           # Mock a valid cached token (RefreshTokenResponse object)
-          valid_token = Kessel::Auth::RefreshTokenResponse.new('valid-token', Time.now.to_i + 3600)
+          valid_token = Kessel::Auth::RefreshTokenResponse.new('valid-token', Time.now + 3600)
           oauth.instance_variable_set(:@cached_token, valid_token)
         end
 
@@ -236,7 +236,7 @@ RSpec.describe Kessel::Auth do
       context 'when token is expired' do
         before do
           # Mock an expired cached token
-          expired_token = Kessel::Auth::RefreshTokenResponse.new('expired-token', Time.now.to_i - 3600)
+          expired_token = Kessel::Auth::RefreshTokenResponse.new('expired-token', Time.now - 3600)
           oauth.instance_variable_set(:@cached_token, expired_token)
         end
 

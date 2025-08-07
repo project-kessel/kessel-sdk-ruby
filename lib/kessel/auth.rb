@@ -151,7 +151,7 @@ module Kessel
         token_data = client.access_token!(request_params)
         RefreshTokenResponse.new(
           access_token: token_data.access_token,
-          expires_at: Time.now.to_i + (token_data.expires_in || DEFAULT_EXPIRES_IN)
+          expires_at: Time.now + (token_data.expires_in || DEFAULT_EXPIRES_IN)
         ).freeze
       end
 
@@ -164,7 +164,7 @@ module Kessel
         expires_at = @cached_token['expires_at']
         return false unless expires_at
 
-        Time.now.to_i + EXPIRATION_WINDOW < expires_at
+        Time.now.to_i + EXPIRATION_WINDOW < expires_at.to_i
       rescue StandardError
         false
       end
