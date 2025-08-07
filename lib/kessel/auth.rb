@@ -10,7 +10,7 @@ module Kessel
   # with automatic discovery. Works seamlessly with OIDC-compliant providers.
   #
   # @example Basic usage
-  #   auth = Kessel::Auth::OAuth.new(
+  #   auth = Kessel::Auth::OAuth2ClientCredentials.new.new(
   #     client_id: 'my-app',
   #     client_secret: 'secret',
   #     token_endpoint: 'https://my-domain/auth/realms/my-realm/protocol/openid-connect/token'
@@ -70,11 +70,11 @@ module Kessel
     # OpenID Connect Client Credentials flow implementation using discovery.
     #
     # This provides a secure OIDC Client Credentials flow implementation with
-    # automatic endpoint discovery. Works seamlessly OIDC-compliant providers
+    # automatic endpoint discovery. Works seamlessly with OIDC-compliant providers
     # that support discovery.
     #
     # @example
-    #   oauth = OAuth.new(
+    #   oauth = OAuth2ClientCredentials.new(
     #     client_id: 'kessel-client',
     #     client_secret: 'super-secret-key',
     #     token_endpoint: 'https://my-domain/auth/realms/my-realm/protocol/openid-connect/token'
@@ -103,7 +103,7 @@ module Kessel
       # @raise [OAuthAuthenticationError] if authentication fails
       #
       # @example
-      #   oauth = OAuth.new(
+      #   oauth = OAuth2ClientCredentials.new(
       #     client_id: 'my-app',
       #     client_secret: 'secret',
       #     token_endpoint: 'https://my-domain/auth/realms/my-realm/protocol/openid-connect/token'
@@ -126,7 +126,7 @@ module Kessel
       # @raise [OAuthAuthenticationError] if token acquisition fails
       #
       # @example
-      #   token = oauth.token
+      #   token = oauth.get_token
       #   # Use token in Authorization header: "Bearer #{token}"
       def get_token(force_refresh: false)
         return @cached_token if !force_refresh && token_valid?
