@@ -109,8 +109,8 @@ RSpec.describe Kessel::Auth do
             token_endpoint: token_endpoint
           )
 
-          expect(oauth.client_id).to eq(client_id)
-          expect(oauth.token_endpoint).to eq(token_endpoint)
+          expect(oauth.instance_variable_get(:@client_id)).to eq(client_id)
+          expect(oauth.instance_variable_get(:@token_endpoint)).to eq(token_endpoint)
         end
       end
 

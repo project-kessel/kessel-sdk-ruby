@@ -32,17 +32,14 @@ module Kessel
 
     # OpenID Connect Client Credentials flow implementation
     class OAuth2ClientCredentials
-      attr_reader client_id: String
-      attr_reader token_endpoint: String
-
       def initialize: (client_id: String, client_secret: String, token_endpoint: String) -> void
       def get_token: (?force_refresh: bool) -> RefreshTokenResponse
-      def token_valid?: () -> bool
 
       private
 
+      def token_valid?: () -> bool
       def refresh: () -> RefreshTokenResponse
       def create_oidc_client: () -> untyped
     end
   end
-end 
+end

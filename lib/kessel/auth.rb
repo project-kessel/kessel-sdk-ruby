@@ -15,7 +15,7 @@ module Kessel
   #     client_secret: 'secret',
   #     token_endpoint: 'https://my-domain/auth/realms/my-realm/protocol/openid-connect/token'
   #   )
-  #   token = auth.token
+  #   token = auth.get_token
   #
   # @author Project Kessel
   # @since 1.0.0
@@ -81,17 +81,9 @@ module Kessel
     #   )
     #
     #   # Get current access token (automatically cached and refreshed)
-    #   token = oauth.token
+    #   token = oauth.get_token
     class OAuth2ClientCredentials
       include Kessel::Auth
-
-      # OAuth client identifier.
-      # @return [String] The client ID
-      attr_reader :client_id
-
-      # OIDC issuer URL for discovery.
-      # @return [String] The issuer URL
-      attr_reader :token_endpoint
 
       # Creates a new OIDC client with specified token endpoint.
       #
@@ -122,7 +114,7 @@ module Kessel
       # Uses OIDC Client Credentials flow with automatic token caching,
       # expiration checking, and refresh logic.
       #
-      # @return [String] A valid access token
+      # @return [RefreshTokenResponse] A valid access token
       # @raise [OAuthAuthenticationError] if token acquisition fails
       #
       # @example
@@ -162,8 +154,6 @@ module Kessel
           expires_at: Time.now.to_i + (token_data.expires_in || DEFAULT_EXPIRES_IN)
         ).freeze
       end
-
-      private
 
       # Checks if we have a valid cached token.
       #
