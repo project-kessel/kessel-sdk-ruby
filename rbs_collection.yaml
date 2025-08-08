@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+sources:
+  - type: git
+    name: ruby/gem_rbs_collection
+    revision: main
+    remote: https://github.com/ruby/gem_rbs_collection.git
+    repo_dir: gems
+
+path: .gem_rbs_collection
+
+gems:
+  - name: grpc
+  - name: openid_connect
+    ignore: true  # Optional dependency
+  - name: rspec
+    ignore: true  # Development only 

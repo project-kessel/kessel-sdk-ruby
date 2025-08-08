@@ -24,6 +24,15 @@ Or install it yourself as:
 gem install kessel-sdk
 ```
 
+## Authentication (Optional)
+
+The SDK supports OAuth 2.0 Client Credentials flow. To use authentication features, add the OpenID Connect gem:
+
+```ruby
+gem 'kessel-sdk'
+gem 'openid_connect', '~> 2.0'  # Optional - only for authentication
+```
+
 ## Usage
 
 This library provides direct access to Kessel Inventory API gRPC services. All generated classes are available under the `Kessel::Inventory` module.
@@ -132,11 +141,22 @@ All protobuf message classes are generated and available. Key classes include:
 
 See the `examples/` directory for complete working examples.
 
+## Type Safety
+
+This library includes RBS type signatures for enhanced type safety in Ruby. The type definitions are located in the `sig/` directory and cover:
+
+- Core library interfaces
+- Configuration structures  
+- OAuth authentication classes
+- gRPC client builders
+
+To use with type checkers like Steep or Sorbet, ensure the `sig/` directory is in your type checking configuration.
+
 ## Development
 
 ### Prerequisites
 
-- Ruby 3.3 or higher
+- Ruby 3.3 or higher  
 - [buf](https://buf.build) for protobuf/gRPC code generation
 
 Install buf:
@@ -158,6 +178,22 @@ bundle install
 
 # Generate gRPC code from Kessel Inventory API
 buf generate
+```
+
+### Testing
+
+```bash
+# Run tests
+bundle exec rspec
+
+# Run with coverage
+COVERAGE=1 bundle exec rspec
+
+# Run linting
+bundle exec rubocop
+
+# Security audit
+bundle exec bundle-audit
 ```
 
 ### Code Generation
