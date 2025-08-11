@@ -2,4 +2,8 @@ module Kessel
   module GRPC
     def oauth2_call_credentials: (Auth::OAuth2ClientCredentials auth) -> ::GRPC::Core::CallCredentials
   end
+
+  module Inventory
+    def service_builder: (Class service_class) -> Class
+  end
 end

@@ -1,0 +1,64 @@
+module Kessel
+  module Inventory
+    # Service builder function that creates a ClientBuilder class for a specific service
+    def service_builder: (Class service_class) -> Class
+
+    # Client builder for gRPC services with fluent configuration
+    class ClientBuilder
+      def initialize: (String target) -> void
+
+      # Configure client with OAuth2 client credentials authentication
+      def oauth2_client_authenticated: (oauth2_client_credentials: Auth::OAuth2ClientCredentials, ?channel_credentials: ::GRPC::Core::ChannelCredentials?) -> ClientBuilder
+
+      # Configure client with custom authentication credentials
+      def authenticated: (?call_credentials: ::GRPC::Core::CallCredentials?, ?channel_credentials: ::GRPC::Core::ChannelCredentials?) -> ClientBuilder
+
+      # Configure client without call credentials but with optional channel credentials
+      def unauthenticated: (?channel_credentials: ::GRPC::Core::ChannelCredentials?) -> ClientBuilder
+
+      # Configure client for insecure connection (development/testing)
+      def insecure: () -> ClientBuilder
+
+      # Build and return the configured gRPC client
+      def build: () -> untyped
+
+      private
+
+      # Get the service class for this builder
+      def self.service_class: () -> Class
+
+      # Validate credential configuration
+      def validate_credentials: () -> void
+    end
+
+    module V1
+      module KesselInventoryHealthService
+        ClientBuilder: Class
+      end
+    end
+
+    module V1beta1
+      module Relationships
+        module KesselK8SPolicyIsPropagatedToK8SClusterService
+          ClientBuilder: Class
+        end
+      end
+
+      module Resources
+        module KesselK8sClusterService
+          ClientBuilder: Class
+        end
+
+        module KesselK8sPolicyService
+          ClientBuilder: Class
+        end
+      end
+    end
+
+    module V1beta2
+      module KesselInventoryService
+        ClientBuilder: Class
+      end
+    end
+  end
+end
