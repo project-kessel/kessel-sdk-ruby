@@ -1,7 +1,7 @@
 module Kessel
   module Inventory
     # Service builder function that creates a ClientBuilder class for a specific service
-    def service_builder: (Class service_class) -> Class
+    def service_builder: (Class service_class) -> ClientBuilder
 
     # Client builder for gRPC services with fluent configuration
     class ClientBuilder
@@ -33,31 +33,31 @@ module Kessel
 
     module V1
       module KesselInventoryHealthService
-        ClientBuilder: Class
+        ClientBuilder: ClientBuilder
       end
     end
 
     module V1beta1
       module Relationships
         module KesselK8SPolicyIsPropagatedToK8SClusterService
-          ClientBuilder: Class
+          ClientBuilder: ClientBuilder
         end
       end
 
       module Resources
         module KesselK8sClusterService
-          ClientBuilder: Class
+          ClientBuilder: ClientBuilder
         end
 
         module KesselK8sPolicyService
-          ClientBuilder: Class
+          ClientBuilder: ClientBuilder
         end
       end
     end
 
     module V1beta2
       module KesselInventoryService
-        ClientBuilder: Class
+        ClientBuilder: ClientBuilder
       end
     end
   end
