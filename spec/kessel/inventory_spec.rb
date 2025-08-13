@@ -9,8 +9,8 @@ RSpec.describe Kessel::Inventory do
       expect(Kessel::Inventory).to be_a(Module)
     end
 
-    it 'defines the service_builder method' do
-      expect(Kessel::Inventory).to respond_to(:service_builder)
+    it 'defines the client_builder_for_stub method' do
+      expect(Kessel::Inventory).to respond_to(:client_builder_for_stub)
     end
 
     it 'defines the ClientBuilder class' do
@@ -19,25 +19,25 @@ RSpec.describe Kessel::Inventory do
     end
   end
 
-  describe '#service_builder' do
-    let(:mock_service_class) { Class.new }
+  describe '#client_builder_for_stub' do
+    let(:mock_stub_class) { Class.new }
 
     it 'returns a ClientBuilder subclass' do
-      builder_class = Kessel::Inventory.service_builder(mock_service_class)
+      builder_class = Kessel::Inventory.client_builder_for_stub(mock_stub_class)
       expect(builder_class).to be_a(Class)
       expect(builder_class.ancestors).to include(Kessel::Inventory::ClientBuilder)
     end
 
     it 'sets the service class on the builder' do
-      builder_class = Kessel::Inventory.service_builder(mock_service_class)
-      expect(builder_class.instance_variable_get(:@service_class)).to eq(mock_service_class)
+      builder_class = Kessel::Inventory.client_builder_for_stub(mock_stub_class)
+      expect(builder_class.instance_variable_get(:@stub_class)).to eq(mock_stub_class)
     end
   end
 
   describe 'ClientBuilder' do
     let(:target) { 'localhost:9000' }
     let(:builder) { Kessel::Inventory::ClientBuilder.new(target) }
-    let(:mock_service_class) { double('ServiceClass') }
+    let(:mock_stub_class) { double('ServiceClass') }
     let(:mock_stub_instance) { double('StubInstance') }
     let(:oauth_credentials) { double('OAuth2ClientCredentials') }
     let(:channel_credentials) { double('ChannelCredentials') }
@@ -45,8 +45,8 @@ RSpec.describe Kessel::Inventory do
 
     before do
       # Mock the service class for the builder
-      allow(builder.class).to receive(:service_class).and_return(mock_service_class)
-      allow(mock_service_class).to receive(:new).and_return(mock_stub_instance)
+      allow(builder.class).to receive(:stub_class).and_return(mock_stub_class)
+      allow(mock_stub_class).to receive(:new).and_return(mock_stub_instance)
 
       # Mock GRPC credentials
       allow(GRPC::Core::ChannelCredentials).to receive(:new).and_return(channel_credentials)
@@ -158,14 +158,14 @@ RSpec.describe Kessel::Inventory do
     describe '#build' do
       context 'with default configuration' do
         it 'creates service instance with default channel credentials' do
-          expect(mock_service_class).to receive(:new).with(target, channel_credentials)
+          expect(mock_stub_class).to receive(:new).with(target, channel_credentials)
           builder.build
         end
       end
 
       context 'with insecure configuration' do
         it 'creates service instance with insecure credentials' do
-          expect(mock_service_class).to receive(:new).with(target, :this_channel_is_insecure)
+          expect(mock_stub_class).to receive(:new).with(target, :this_channel_is_insecure)
           builder.insecure.build
         end
       end
@@ -174,7 +174,7 @@ RSpec.describe Kessel::Inventory do
         it 'composes credentials before creating service' do
           composed_credentials = double('ComposedCredentials')
           expect(channel_credentials).to receive(:compose).with(call_credentials).and_return(composed_credentials)
-          expect(mock_service_class).to receive(:new).with(target, composed_credentials)
+          expect(mock_stub_class).to receive(:new).with(target, composed_credentials)
 
           builder.authenticated(call_credentials: call_credentials, channel_credentials: channel_credentials).build
         end

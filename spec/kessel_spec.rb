@@ -41,7 +41,7 @@ RSpec.describe 'Kessel SDK' do
     end
 
     it 'defines service builder function' do
-      expect(Kessel::Inventory).to respond_to(:service_builder)
+      expect(Kessel::Inventory).to respond_to(:client_builder_for_stub)
     end
 
     it 'defines ClientBuilder class' do

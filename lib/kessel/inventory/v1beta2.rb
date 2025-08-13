@@ -9,7 +9,7 @@ module Kessel
   module Inventory
     module V1beta2
       module KesselInventoryService
-        ClientBuilder = ::Kessel::Inventory.service_builder(Stub)
+        ClientBuilder = ::Kessel::Inventory.client_builder_for_stub(Stub)
       end
     end
   end

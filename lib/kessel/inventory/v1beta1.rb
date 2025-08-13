@@ -12,17 +12,17 @@ module Kessel
     module V1beta1
       module Relationships
         module KesselK8SPolicyIsPropagatedToK8SClusterService
-          ClientBuilder = ::Kessel::Inventory.service_builder(Stub)
+          ClientBuilder = ::Kessel::Inventory.client_builder_for_stub(Stub)
         end
       end
 
       module Resources
         module KesselK8sClusterService
-          ClientBuilder = ::Kessel::Inventory.service_builder(Stub)
+          ClientBuilder = ::Kessel::Inventory.client_builder_for_stub(Stub)
         end
 
         module KesselK8sPolicyService
-          ClientBuilder = ::Kessel::Inventory.service_builder(Stub)
+          ClientBuilder = ::Kessel::Inventory.client_builder_for_stub(Stub)
         end
       end
     end

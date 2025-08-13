@@ -5,9 +5,9 @@ require 'kessel/grpc'
 
 module Kessel
   module Inventory
-    def service_builder(service_class)
+    def client_builder_for_stub(stub_class)
       builder_class = Class.new(ClientBuilder)
-      builder_class.instance_variable_set(:@service_class, service_class)
+      builder_class.instance_variable_set(:@stub_class, stub_class)
       builder_class
     end
 
@@ -52,13 +52,13 @@ module Kessel
 
         credentials = @channel_credentials
         credentials = credentials.compose(@call_credentials) unless @call_credentials.nil?
-        self.class.service_class.new(@target, credentials)
+        self.class.stub_class.new(@target, credentials)
       end
 
       private
 
       class << self
-        attr_reader :service_class
+        attr_reader :stub_class
       end
 
       def validate_credentials

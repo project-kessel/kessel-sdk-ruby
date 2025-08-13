@@ -1,7 +1,7 @@
 module Kessel
   module Inventory
     # Service builder function that creates a ClientBuilder class for a specific service
-    def service_builder: (Class service_class) -> ClientBuilder
+    def client_builder_for_stub: (Class stub_class) -> ClientBuilder
 
     # Client builder for gRPC services with fluent configuration
     class ClientBuilder
@@ -25,7 +25,7 @@ module Kessel
       private
 
       # Get the service class for this builder
-      def self.service_class: () -> Class
+      def self.stub_class: () -> Class
 
       # Validate credential configuration
       def validate_credentials: () -> void
