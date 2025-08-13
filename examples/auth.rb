@@ -37,10 +37,17 @@ begin
 
   # Set GRPC_DEFAULT_SSL_ROOTS_FILE_PATH if testing locally
   # e.g. GRPC_DEFAULT_SSL_ROOTS_FILE_PATH="$(mkcert -CAROOT)/rootCA.pem"
-  credentials = GRPC::Core::ChannelCredentials.new
-  credentials = credentials.compose(oauth2_call_credentials(oauth))
 
-  client = KesselInventoryService::Stub.new(ENV.fetch('KESSEL_ENDPOINT', nil), credentials)
+  # Using the client builder
+  client = KesselInventoryService::ClientBuilder.new(ENV.fetch('KESSEL_ENDPOINT', nil))
+                                                .oauth2_client_authenticated(oauth2_client_credentials: oauth)
+                                                .build
+
+  # Or without a ClientBuilder
+  # credentials = GRPC::Core::ChannelCredentials.new
+  # credentials = credentials.compose(oauth2_call_credentials(oauth))
+  #
+  # client = KesselInventoryService::Stub.new(ENV.fetch('KESSEL_ENDPOINT', nil), credentials)
 
   response = client.check(
     CheckRequest.new(
