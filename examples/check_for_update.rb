@@ -6,7 +6,13 @@ require 'kessel-sdk'
 
 include Kessel::Inventory::V1beta2
 
-client = KesselInventoryService::Stub.new(ENV.fetch('KESSEL_ENDPOINT', nil), :this_channel_is_insecure)
+# Using the client builder
+client = KesselInventoryService::ClientBuilder.new(ENV.fetch('KESSEL_ENDPOINT', nil))
+                                              .insecure
+                                              .build
+
+# Or without the client builder
+# client = KesselInventoryService::Stub.new(ENV.fetch('KESSEL_ENDPOINT', nil), :this_channel_is_insecure)
 
 subject_reference = SubjectReference.new(
   resource: ResourceReference.new(

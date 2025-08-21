@@ -32,4 +32,65 @@ RSpec.describe 'Kessel SDK' do
       expect(Kessel::Inventory::V1beta2).to be_a(Module) if defined?(Kessel::Inventory::V1beta2)
     end
   end
+
+  describe 'inventory module structure' do
+    it 'loads inventory modules' do
+      expect { require 'kessel/inventory/v1' }.not_to raise_error
+      expect { require 'kessel/inventory/v1beta1' }.not_to raise_error
+      expect { require 'kessel/inventory/v1beta2' }.not_to raise_error
+    end
+
+    it 'defines service builder function' do
+      expect(Kessel::Inventory).to respond_to(:client_builder_for_stub)
+    end
+
+    it 'defines ClientBuilder class' do
+      expect(defined?(Kessel::Inventory::ClientBuilder)).to eq('constant')
+      expect(Kessel::Inventory::ClientBuilder).to be_a(Class)
+    end
+
+    it 'defines version-specific service modules' do
+      # V1
+      if defined?(Kessel::Inventory::V1)
+        expect(defined?(Kessel::Inventory::V1::KesselInventoryHealthService)).to eq('constant')
+      end
+
+      # V1beta1
+      if defined?(Kessel::Inventory::V1beta1)
+        expect(defined?(Kessel::Inventory::V1beta1::Relationships::KesselK8SPolicyIsPropagatedToK8SClusterService))
+          .to eq('constant')
+        expect(defined?(Kessel::Inventory::V1beta1::Resources::KesselK8sClusterService)).to eq('constant')
+        expect(defined?(Kessel::Inventory::V1beta1::Resources::KesselK8sPolicyService)).to eq('constant')
+      end
+
+      # V1beta2
+      if defined?(Kessel::Inventory::V1beta2)
+        expect(defined?(Kessel::Inventory::V1beta2::KesselInventoryService)).to eq('constant')
+      end
+    end
+
+    it 'defines ClientBuilder for each service' do
+      # V1
+      if defined?(Kessel::Inventory::V1::KesselInventoryHealthService)
+        expect(defined?(Kessel::Inventory::V1::KesselInventoryHealthService::ClientBuilder)).to eq('constant')
+      end
+
+      # V1beta1
+      if defined?(Kessel::Inventory::V1beta1)
+        expect(
+          defined?(
+            Kessel::Inventory::V1beta1::Relationships::KesselK8SPolicyIsPropagatedToK8SClusterService::ClientBuilder
+          )
+        ).to eq('constant')
+        expect(defined?(Kessel::Inventory::V1beta1::Resources::KesselK8sClusterService::ClientBuilder))
+          .to eq('constant')
+        expect(defined?(Kessel::Inventory::V1beta1::Resources::KesselK8sPolicyService::ClientBuilder)).to eq('constant')
+      end
+
+      # V1beta2
+      if defined?(Kessel::Inventory::V1beta2::KesselInventoryService)
+        expect(defined?(Kessel::Inventory::V1beta2::KesselInventoryService::ClientBuilder)).to eq('constant')
+      end
+    end
+  end
 end
