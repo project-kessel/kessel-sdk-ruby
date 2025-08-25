@@ -242,6 +242,110 @@ This is the foundational gRPC library. Future releases will include:
 - **Authentication**: OAuth 2.0 Client Credentials flow
 - **Convenience Methods**: Simplified APIs for common operations*
 *
+## Release Instructions
+
+This section provides step-by-step instructions for maintainers to release a new version of the Kessel SDK for Ruby.
+
+### Version Management
+
+This project follows [Semantic Versioning 2.0.0](https://semver.org/). Version numbers use the format `MAJOR.MINOR.PATCH`:
+
+- **MAJOR**: Increment for incompatible API changes
+- **MINOR**: Increment for backward-compatible functionality additions  
+- **PATCH**: Increment for backward-compatible bug fixes
+
+**Note**: SDK versions across different languages (Ruby, Python, Go, etc.) do not need to be synchronized. Each language SDK can evolve independently based on its specific requirements and release schedule.
+
+### Prerequisites for Release
+
+- Write access to the GitHub repository
+- RubyGems account with push access to the `kessel-sdk` gem
+- Ensure CI/CD tests are passing
+- Review and update CHANGELOG or release notes as needed
+- Ruby 3.3 or higher
+- [buf](https://github.com/bufbuild/buf) for protobuf/gRPC code generation:
+
+### Release Process
+
+1. **Update the Version**
+   ```bash
+   # Edit lib/kessel/version.rb
+   # Update the VERSION constant to the new version number
+   vim lib/kessel/version.rb
+   ```
+
+2. **Update Dependencies**
+   ```bash
+   # Generate gRPC code from Kessel Inventory API
+   buf generate
+   # Update Gemfile.lock with any dependency changes
+   bundle install
+   ```
+
+3. **Run Quality Checks**
+   ```bash
+   # Run the full test suite
+   bundle exec rspec
+   
+   # Run linting
+   bundle exec rubocop
+   
+   # Run security audit
+   bundle exec bundle-audit check --update
+   
+   # Build and test the gem locally
+   rake install_local
+   ```
+
+4. **Commit Changes**
+   ```bash
+   git add lib/kessel/version.rb Gemfile.lock
+   git commit -m "Release version X.Y.Z"
+   git push origin main # or git push upstream main
+   ```
+
+5. **Build and Release the Gem**
+   ```bash
+   # Build the gem
+   gem build kessel-sdk.gemspec
+   
+   # Push to RubyGems (requires RubyGems account and gem ownership)
+   gem push kessel-sdk-X.Y.Z.gem
+   ```
+
+6. **Tag the Release**
+   ```bash
+   # Create and push a git tag
+   git tag -a vX.Y.Z -m "Release version X.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+7. **Clean Up**
+   ```bash
+   # Remove the built gem file
+   rake clean
+   ```
+
+### Using Bundler Gem Tasks
+
+This project includes `bundler/gem_tasks` which provides additional rake tasks:
+
+```bash
+# Show available bundler gem tasks
+rake -T
+
+# Build gem
+rake build
+
+# Install gem locally  
+rake install
+
+# Release gem (builds, tags, and pushes to RubyGems)
+rake release
+```
+
+**Note**: The `rake release` command automates steps 5-6 above but requires proper git and RubyGems credentials to be configured.
+
 ## Contributing
 
 1. Fork the repository
