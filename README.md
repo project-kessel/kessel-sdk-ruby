@@ -256,6 +256,15 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/). Version n
 
 **Note**: SDK versions across different languages (Ruby, Python, Go, etc.) do not need to be synchronized. Each language SDK can evolve independently based on its specific requirements and release schedule.
 
+### Prerequisites for Release
+
+- Write access to the GitHub repository
+- RubyGems account with push access to the `kessel-sdk` gem
+- Ensure CI/CD tests are passing
+- Review and update CHANGELOG or release notes as needed
+- Ruby 3.3 or higher
+- [buf](https://github.com/bufbuild/buf) for protobuf/gRPC code generation:
+
 ### Release Process
 
 1. **Update the Version**
@@ -267,6 +276,8 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/). Version n
 
 2. **Update Dependencies**
    ```bash
+   # Generate gRPC code from Kessel Inventory API
+   buf generate
    # Update Gemfile.lock with any dependency changes
    bundle install
    ```
@@ -314,13 +325,6 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/). Version n
    # Remove the built gem file
    rake clean
    ```
-
-### Prerequisites for Release
-
-- Write access to the GitHub repository
-- RubyGems account with push access to the `kessel-sdk` gem
-- Ensure CI/CD tests are passing
-- Review and update CHANGELOG or release notes as needed
 
 ### Using Bundler Gem Tasks
 
