@@ -7,7 +7,7 @@ require 'google/protobuf'
 require 'buf/validate/validate_pb'
 
 
-descriptor_data = "\n1kessel/inventory/v1beta2/reporter_reference.proto\x12\x18kessel.inventory.v1beta2\x1a\x1b\x62uf/validate/validate.proto\"\x8f\x01\n\x11ReporterReference\x12,\n\x04type\x18\x01 \x01(\tB\x18\xbaH\x15r\x13\x10\x01\x32\x0f^[A-Za-z0-9_]+$R\x04type\x12<\n\x0binstance_id\x18\x02 \x01(\tB\x16\xbaH\x13r\x11\x32\x0f^[A-Za-z0-9_]+$H\x00R\ninstanceId\x88\x01\x01\x42\x0e\n\x0c_instance_idBr\n(org.project_kessel.api.inventory.v1beta2P\x01ZDgithub.com/project-kessel/inventory-api/api/kessel/inventory/v1beta2b\x06proto3"
+descriptor_data = "\n1kessel/inventory/v1beta2/reporter_reference.proto\x12\x18kessel.inventory.v1beta2\x1a\x1b\x62uf/validate/validate.proto\"\xcf\x01\n\x11ReporterReference\x12,\n\x04type\x18\x01 \x01(\tB\x18\xbaH\x15r\x13\x10\x01\x32\x0f^[A-Za-z0-9_]+$R\x04type\x12|\n\x0binstance_id\x18\x02 \x01(\tBV\xbaHSrQ2O(?i)^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$|^[A-Za-z][A-Za-z0-9._-]{0,255}$H\x00R\ninstanceId\x88\x01\x01\x42\x0e\n\x0c_instance_idBr\n(org.project_kessel.api.inventory.v1beta2P\x01ZDgithub.com/project-kessel/inventory-api/api/kessel/inventory/v1beta2b\x06proto3"
 
 pool = ::Google::Protobuf::DescriptorPool.generated_pool
 pool.add_serialized_file(descriptor_data)
