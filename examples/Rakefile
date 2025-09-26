@@ -31,3 +31,8 @@ desc 'run auth sample'
 task :auth do
   ruby 'auth.rb'
 end
+
+desc 'run fetch_workspace sample'
+task :fetch_workspaces do
+  ruby 'fetch_workspaces.rb'
+end
