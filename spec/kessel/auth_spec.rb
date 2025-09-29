@@ -21,6 +21,10 @@ RSpec.describe Kessel::Auth do
     it 'defines OAuth2ClientCredentials class' do
       expect(defined?(Kessel::Auth::OAuth2ClientCredentials)).to eq('constant')
     end
+
+    it 'defines AuthRequest module' do
+      expect(defined?(Kessel::Auth::AuthRequest)).to eq('constant')
+    end
   end
 
   describe 'exception classes' do
@@ -250,6 +254,76 @@ RSpec.describe Kessel::Auth do
           expect(oauth.send(:token_valid?)).to be false
         end
       end
+    end
+  end
+
+  describe '#oauth2_auth_request' do
+    include Kessel::Auth
+
+    let(:mock_credentials) { double('OAuth2ClientCredentials') }
+
+    it 'creates OAuth2AuthRequest with credentials' do
+      result = oauth2_auth_request(mock_credentials)
+
+      expect(result).to be_a(Kessel::Auth::OAuth2AuthRequest)
+      expect(result.instance_variable_get(:@credentials)).to eq(mock_credentials)
+    end
+  end
+
+  describe 'OAuth2AuthRequest' do
+    let(:mock_credentials) { double('OAuth2ClientCredentials') }
+    let(:mock_token) { double('token', access_token: 'test-token-123') }
+    let(:mock_request) { {} }
+    let(:auth_request) { Kessel::Auth::OAuth2AuthRequest.new(mock_credentials) }
+
+    describe '#initialize' do
+      it 'stores credentials' do
+        expect(auth_request.instance_variable_get(:@credentials)).to eq(mock_credentials)
+      end
+    end
+
+    describe '#configure_request' do
+      before do
+        allow(mock_credentials).to receive(:get_token).and_return(mock_token)
+      end
+
+      it 'gets token from credentials' do
+        expect(mock_credentials).to receive(:get_token)
+
+        auth_request.configure_request(mock_request)
+      end
+
+      it 'sets authorization header with Bearer token' do
+        auth_request.configure_request(mock_request)
+
+        expect(mock_request['authorization']).to eq('Bearer test-token-123')
+      end
+
+      context 'when token access_token is nil' do
+        let(:mock_token) { double('token', access_token: nil) }
+
+        it 'sets authorization header with Bearer nil' do
+          auth_request.configure_request(mock_request)
+
+          expect(mock_request['authorization']).to eq('Bearer ')
+        end
+      end
+    end
+  end
+
+  describe 'AuthRequest module' do
+    let(:test_class) do
+      Class.new do
+        include Kessel::Auth::AuthRequest
+      end
+    end
+
+    it 'requires implementation of configure_request method' do
+      instance = test_class.new
+
+      expect do
+        instance.configure_request({})
+      end.to raise_error(NotImplementedError, /must implement #configure_request/)
     end
   end
 end
