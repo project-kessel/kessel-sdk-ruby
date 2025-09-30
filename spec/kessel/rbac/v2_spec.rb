@@ -131,7 +131,7 @@ RSpec.describe Kessel::RBAC::V2 do
       it 'handles endpoint with leading slash' do
         expect_any_instance_of(Object).to receive(:URI).with('http://localhost:8888/api/rbac/v2/workspaces/')
 
-        fetch_workspace('/http://localhost:8888', org_id, 'default', auth: mock_auth)
+        fetch_workspace('http://localhost:8888/', org_id, 'default', auth: mock_auth)
       end
 
       it 'sets query parameters correctly' do

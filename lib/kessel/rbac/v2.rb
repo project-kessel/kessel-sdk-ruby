@@ -57,7 +57,7 @@ module Kessel
       end
 
       def fetch_workspace(rbac_base_endpoint, org_id, workspace_type, auth: nil)
-        rbac_base_endpoint = rbac_base_endpoint.delete_prefix('/')
+        rbac_base_endpoint = rbac_base_endpoint.delete_suffix('/')
         uri = URI(rbac_base_endpoint + WORKSPACE_ENDPOINT)
         query = {
           type: workspace_type
