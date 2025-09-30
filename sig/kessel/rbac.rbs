@@ -1,9 +1,7 @@
+
 module Kessel
   module RBAC
     module V2
-      # Constant defining the workspace endpoint path
-      WORKSPACE_ENDPOINT: String
-
       # Structure representing a workspace
       class Workspace < Struct
         attr_accessor id: String
@@ -14,24 +12,10 @@ module Kessel
       end
 
       # Fetches the default workspace for an organization
-      def fetch_default_workspace: (String rbac_base_endpoint, String org_id, ?auth: Kessel::Auth::AuthRequest?) -> Workspace
+      def fetch_default_workspace: (String rbac_base_endpoint, String org_id, ?auth: Kessel::Auth::AuthRequest?, ?http_client: Net::HTTP?) -> Workspace
 
       # Fetches the root workspace for an organization
-      def fetch_root_workspace: (String rbac_base_endpoint, String org_id, ?auth: Kessel::Auth::AuthRequest?) -> Workspace
-
-      private
-
-      # Internal method to fetch a workspace by type
-      def fetch_workspace: (String rbac_base_endpoint, String org_id, String workspace_type, ?auth: Kessel::Auth::AuthRequest?) -> Workspace
-
-      # Makes the HTTP request to RBAC service
-      def run_request: (URI::Generic uri, String org_id, Kessel::Auth::AuthRequest? auth) -> Net::HTTPResponse
-
-      # Processes the HTTP response and extracts workspace data
-      def process_response: (Net::HTTPResponse response, String workspace_type) -> Workspace
-
-      # Extracts workspace object from parsed JSON response
-      def extract_workspace: (Hash[String, untyped] workspace_response) -> Workspace
+      def fetch_root_workspace: (String rbac_base_endpoint, String org_id, ?auth: Kessel::Auth::AuthRequest?, ?http_client: Net::HTTP?) -> Workspace
     end
   end
 end

@@ -58,12 +58,15 @@ RSpec.describe Kessel::RBAC::V2 do
 
   describe '#fetch_default_workspace' do
     before do
-      allow(self).to receive(:fetch_workspace).with(rbac_base_endpoint, org_id, 'default', auth: mock_auth)
-        .and_return(Kessel::RBAC::V2::Workspace.new(id: 'default-123', name: 'Default', type: 'default', description: 'Default workspace'))
+      allow(self).to receive(:fetch_workspace)
+        .with(rbac_base_endpoint, org_id, 'default', auth: mock_auth, http_client: nil)
+        .and_return(Kessel::RBAC::V2::Workspace.new(id: 'default-123', name: 'Default', type: 'default',
+                                                    description: 'Default workspace'))
     end
 
     it 'calls fetch_workspace with default type' do
-      expect(self).to receive(:fetch_workspace).with(rbac_base_endpoint, org_id, 'default', auth: mock_auth)
+      expect(self).to receive(:fetch_workspace).with(rbac_base_endpoint, org_id, 'default', auth: mock_auth,
+                                                                                            http_client: nil)
 
       fetch_default_workspace(rbac_base_endpoint, org_id, auth: mock_auth)
     end
@@ -78,12 +81,15 @@ RSpec.describe Kessel::RBAC::V2 do
 
   describe '#fetch_root_workspace' do
     before do
-      allow(self).to receive(:fetch_workspace).with(rbac_base_endpoint, org_id, 'root', auth: mock_auth)
-        .and_return(Kessel::RBAC::V2::Workspace.new(id: 'root-123', name: 'Root', type: 'root', description: 'Root workspace'))
+      allow(self).to receive(:fetch_workspace)
+        .with(rbac_base_endpoint, org_id, 'root', auth: mock_auth, http_client: nil)
+        .and_return(Kessel::RBAC::V2::Workspace.new(id: 'root-123', name: 'Root', type: 'root',
+                                                    description: 'Root workspace'))
     end
 
     it 'calls fetch_workspace with root type' do
-      expect(self).to receive(:fetch_workspace).with(rbac_base_endpoint, org_id, 'root', auth: mock_auth)
+      expect(self).to receive(:fetch_workspace).with(rbac_base_endpoint, org_id, 'root', auth: mock_auth,
+                                                                                         http_client: nil)
 
       fetch_root_workspace(rbac_base_endpoint, org_id, auth: mock_auth)
     end
@@ -102,7 +108,7 @@ RSpec.describe Kessel::RBAC::V2 do
     before do
       allow_any_instance_of(Object).to receive(:URI).with('http://localhost:8888/api/rbac/v2/workspaces/').and_return(mock_uri)
       allow(mock_uri).to receive(:query=)
-      allow(Net::HTTP).to receive(:start).with('localhost', 8888).and_yield(mock_http)
+      allow(Net::HTTP).to receive(:new).with('localhost', 8888).and_return(mock_http)
       allow(Net::HTTP::Get).to receive(:new).with(mock_uri).and_return(mock_request)
       allow(mock_request).to receive(:[]=)
       allow(mock_auth).to receive(:configure_request)
@@ -182,6 +188,31 @@ RSpec.describe Kessel::RBAC::V2 do
         expect(mock_request).not_to receive(:configure_request)
 
         fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: nil)
+      end
+    end
+
+    context 'when http_client is provided' do
+      it 'does not create an http_client' do
+        allow(mock_http).to receive(:address).and_return('localhost')
+        allow(mock_http).to receive(:port).and_return(8888)
+        allow(Net::HTTP).to receive(:new).with('localhost', 8888).and_raise('should not call Net::HTTP.new')
+        fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: nil, http_client: mock_http)
+      end
+
+      it 'http client needs to have the same host as the url' do
+        allow(mock_http).to receive(:address).and_return('not-localhost')
+        allow(mock_http).to receive(:port).and_return(8888)
+        expect do
+          fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: nil, http_client: mock_http)
+        end.to raise_error
+      end
+
+      it 'http client needs to have the same port as the url' do
+        allow(mock_http).to receive(:address).and_return('localhost')
+        allow(mock_http).to receive(:port).and_return(9999)
+        expect do
+          fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: nil, http_client: mock_http)
+        end.to raise_error
       end
     end
   end
