@@ -64,7 +64,7 @@ module Kessel
         if http_client.nil?
           http_client = Net::HTTP.new(uri.host, uri.port)
         else
-          check_http_client(http_client, uri) unless http_client.nil?
+          check_http_client(http_client, uri)
         end
 
         response = run_request(uri, org_id, auth, http_client)
