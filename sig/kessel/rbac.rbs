@@ -1,0 +1,21 @@
+
+module Kessel
+  module RBAC
+    module V2
+      # Structure representing a workspace
+      class Workspace < Struct
+        attr_accessor id: String
+        attr_accessor name: String
+        attr_accessor type: String
+        attr_accessor description: String
+        def initialize: (id: String, name: String, type: String, description: String) -> void
+      end
+
+      # Fetches the default workspace for an organization
+      def fetch_default_workspace: (String rbac_base_endpoint, String org_id, ?auth: Kessel::Auth::AuthRequest?, ?http_client: Net::HTTP?) -> Workspace
+
+      # Fetches the root workspace for an organization
+      def fetch_root_workspace: (String rbac_base_endpoint, String org_id, ?auth: Kessel::Auth::AuthRequest?, ?http_client: Net::HTTP?) -> Workspace
+    end
+  end
+end

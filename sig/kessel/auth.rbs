@@ -23,8 +23,17 @@ module Kessel
       def initialize: (String access_token, Integer expires_at) -> void
     end
 
+    # Interface for authentication request objects
+    module AuthRequest
+      # Configures the given request with authentication headers/credentials
+      def configure_request: (Net::HTTPRequest request) -> void
+    end
+
     # Module method for performing OIDC discovery
     def fetch_oidc_discovery: (String provider_url) -> OIDCDiscoveryMetadata
+
+    # Creates an OAuth2 authentication request object
+    def oauth2_auth_request: (OAuth2ClientCredentials credentials) -> OAuth2AuthRequest
 
     # Checks if the openid_connect gem is available
     private
@@ -40,6 +49,14 @@ module Kessel
       def token_valid?: () -> bool
       def refresh: () -> RefreshTokenResponse
       def create_oidc_client: () -> untyped
+    end
+
+    # OAuth2 authentication request implementation
+    class OAuth2AuthRequest
+      include AuthRequest
+
+      def initialize: (OAuth2ClientCredentials credentials) -> void
+      def configure_request: (Net::HTTPRequest request) -> void
     end
   end
 end

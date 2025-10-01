@@ -46,6 +46,12 @@ module Kessel
     OIDCDiscoveryMetadata = Struct.new(:token_endpoint)
     RefreshTokenResponse = Struct.new(:access_token, :expires_at)
 
+    module AuthRequest
+      def configure_request(request)
+        raise NotImplementedError, "#{self.class} must implement #configure_request"
+      end
+    end
+
     def fetch_oidc_discovery(provider_url)
       check_dependencies!
       discovery = ::OpenIDConnect::Discovery::Provider::Config.discover!(provider_url)
@@ -54,12 +60,29 @@ module Kessel
       raise OAuthAuthenticationError, "Failed to discover OIDC configuration from #{provider_url}: #{e.message}"
     end
 
+    def oauth2_auth_request(credentials)
+      OAuth2AuthRequest.new(credentials)
+    end
+
+    private
+
+    class OAuth2AuthRequest
+      include AuthRequest
+
+      def initialize(credentials)
+        @credentials = credentials
+      end
+
+      def configure_request(request)
+        token = @credentials.get_token
+        request['authorization'] = "Bearer #{token.access_token}"
+      end
+    end
+
     # Checks if the openid_connect gem is available.
     #
     # @raise [OAuthDependencyError] if openid_connect gem is missing
     # @api private
-    private
-
     def check_dependencies!
       require 'openid_connect'
     rescue LoadError
