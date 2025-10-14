@@ -1,0 +1,38 @@
+name: buf-generate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *' # every 6 hours
+
+jobs:
+  build:
+    name: Generate protobuf files
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      
+      - name: Setup Buf
+        uses: bufbuild/buf-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          setup_only: true
+      
+      - name: Run buf generate
+        run: buf generate
+      
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'Regenerate protobuf files from buf'
+          title: 'Update generated protobuf files'
+          body: |
+            Automated regeneration of protobuf files using `buf generate`.
+            
+            This PR was automatically created by the buf-generate workflow.
+          branch: buf-generate-update
+          delete-branch: true
