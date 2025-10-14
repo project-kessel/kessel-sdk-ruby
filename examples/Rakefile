@@ -36,3 +36,8 @@ desc 'run fetch_workspace sample'
 task :fetch_workspaces do
   ruby 'fetch_workspaces.rb'
 end
+
+desc 'run list_workspaces sample'
+task :list_workspaces do
+  ruby 'list_workspaces.rb'
+end

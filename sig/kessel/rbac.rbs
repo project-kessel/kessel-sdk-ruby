@@ -16,6 +16,30 @@ module Kessel
 
       # Fetches the root workspace for an organization
       def fetch_root_workspace: (String rbac_base_endpoint, String org_id, ?auth: Kessel::Auth::AuthRequest?, ?http_client: Net::HTTP?) -> Workspace
+
+      # Creates a workspace representation type
+      def workspace_type: () -> Kessel::Inventory::V1beta2::RepresentationType
+
+      # Creates a role representation type
+      def role_type: () -> Kessel::Inventory::V1beta2::RepresentationType
+
+      # Creates a principal resource reference
+      def principal_resource: (String id, String domain) -> Kessel::Inventory::V1beta2::ResourceReference
+
+      # Creates a role resource reference
+      def role_resource: (String resource_id) -> Kessel::Inventory::V1beta2::ResourceReference
+
+      # Creates a workspace resource reference
+      def workspace_resource: (String resource_id) -> Kessel::Inventory::V1beta2::ResourceReference
+
+      # Creates a principal subject reference
+      def principal_subject: (String id, String domain) -> Kessel::Inventory::V1beta2::SubjectReference
+
+      # Creates a subject reference
+      def subject: (Kessel::Inventory::V1beta2::ResourceReference resource_ref, ?String? relation) -> Kessel::Inventory::V1beta2::SubjectReference
+
+      # Lists all workspaces, allowing to resume with a continuation_token
+      def list_workspaces: (untyped inventory, Kessel::Inventory::V1beta2::SubjectReference subject, String relation, ?String? continuation_token) -> Enumerator[untyped, void]
     end
   end
 end

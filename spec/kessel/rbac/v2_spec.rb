@@ -216,4 +216,192 @@ RSpec.describe Kessel::RBAC::V2 do
       end
     end
   end
+
+  describe '#workspace_type' do
+    it 'returns RepresentationType for workspace' do
+      result = workspace_type
+
+      expect(result).to be_a(Kessel::Inventory::V1beta2::RepresentationType)
+      expect(result.resource_type).to eq('workspace')
+      expect(result.reporter_type).to eq('rbac')
+    end
+  end
+
+  describe '#role_type' do
+    it 'returns RepresentationType for role' do
+      result = role_type
+
+      expect(result).to be_a(Kessel::Inventory::V1beta2::RepresentationType)
+      expect(result.resource_type).to eq('role')
+      expect(result.reporter_type).to eq('rbac')
+    end
+  end
+
+  describe '#principal_resource' do
+    it 'creates ResourceReference for principal' do
+      result = principal_resource('user123', 'example.com')
+
+      expect(result).to be_a(Kessel::Inventory::V1beta2::ResourceReference)
+      expect(result.resource_type).to eq('principal')
+      expect(result.resource_id).to eq('example.com/user123')
+      expect(result.reporter).to be_a(Kessel::Inventory::V1beta2::ReporterReference)
+      expect(result.reporter.type).to eq('rbac')
+    end
+  end
+
+  describe '#role_resource' do
+    it 'creates ResourceReference for role' do
+      result = role_resource('admin-role')
+
+      expect(result).to be_a(Kessel::Inventory::V1beta2::ResourceReference)
+      expect(result.resource_type).to eq('role')
+      expect(result.resource_id).to eq('admin-role')
+      expect(result.reporter).to be_a(Kessel::Inventory::V1beta2::ReporterReference)
+      expect(result.reporter.type).to eq('rbac')
+    end
+  end
+
+  describe '#workspace_resource' do
+    it 'creates ResourceReference for workspace' do
+      result = workspace_resource('workspace-456')
+
+      expect(result).to be_a(Kessel::Inventory::V1beta2::ResourceReference)
+      expect(result.resource_type).to eq('workspace')
+      expect(result.resource_id).to eq('workspace-456')
+      expect(result.reporter).to be_a(Kessel::Inventory::V1beta2::ReporterReference)
+      expect(result.reporter.type).to eq('rbac')
+    end
+  end
+
+  describe '#principal_subject' do
+    it 'creates SubjectReference for principal' do
+      result = principal_subject('user789', 'domain.org')
+
+      expect(result).to be_a(Kessel::Inventory::V1beta2::SubjectReference)
+      expect(result.resource).to be_a(Kessel::Inventory::V1beta2::ResourceReference)
+      expect(result.resource.resource_type).to eq('principal')
+      expect(result.resource.resource_id).to eq('domain.org/user789')
+    end
+  end
+
+  describe '#subject' do
+    let(:resource_ref) { workspace_resource('test-workspace') }
+
+    it 'creates SubjectReference without relation' do
+      result = subject(resource_ref)
+
+      expect(result).to be_a(Kessel::Inventory::V1beta2::SubjectReference)
+      expect(result.resource).to eq(resource_ref)
+      expect(result.relation).to eq('')
+    end
+
+    it 'creates SubjectReference with relation' do
+      result = subject(resource_ref, 'member')
+
+      expect(result).to be_a(Kessel::Inventory::V1beta2::SubjectReference)
+      expect(result.resource).to eq(resource_ref)
+      expect(result.relation).to eq('member')
+    end
+  end
+
+  describe '#list_workspaces' do
+    let(:mock_inventory) { double('inventory') }
+    let(:mock_subject) { principal_subject('user1', 'example.com') }
+    let(:relation) { 'viewer' }
+    let(:mock_response1) do
+      double('response1',
+             object: workspace_resource('ws-1'),
+             pagination: double('pagination1', continuation_token: 'token123'))
+    end
+    let(:mock_response2) do
+      double('response2',
+             object: workspace_resource('ws-2'),
+             pagination: double('pagination2', continuation_token: 'token456'))
+    end
+    let(:mock_response3) do
+      double('response3',
+             object: workspace_resource('ws-3'),
+             pagination: double('pagination3', continuation_token: nil))
+    end
+
+    context 'when pagination has multiple pages' do
+      it 'returns an Enumerator' do
+        result = list_workspaces(mock_inventory, mock_subject, relation)
+        expect(result).to be_a(Enumerator)
+      end
+
+      it 'iterates through all pages until continuation token is nil' do
+        call_count = 0
+        allow(mock_inventory).to receive(:streamed_list_objects) do |request|
+          call_count += 1
+          case call_count
+          when 1
+            expect(request.pagination.continuation_token).to eq('')
+            [mock_response1, mock_response2]
+          when 2
+            expect(request.pagination.continuation_token).to eq('token456')
+            [mock_response3]
+          end
+        end
+
+        results = list_workspaces(mock_inventory, mock_subject, relation).to_a
+
+        expect(results.length).to eq(3)
+        expect(results[0]).to eq(mock_response1)
+        expect(results[1]).to eq(mock_response2)
+        expect(results[2]).to eq(mock_response3)
+        expect(call_count).to eq(2)
+      end
+
+      it 'uses provided continuation token for first request' do
+        allow(mock_inventory).to receive(:streamed_list_objects) do |request|
+          expect(request.pagination.continuation_token).to eq('initial-token')
+          [mock_response3]
+        end
+
+        results = list_workspaces(mock_inventory, mock_subject, relation, 'initial-token').to_a
+
+        expect(results.length).to eq(1)
+        expect(results[0]).to eq(mock_response3)
+      end
+
+      it 'creates request with correct parameters' do
+        allow(mock_inventory).to receive(:streamed_list_objects) do |request|
+          expect(request.object_type.resource_type).to eq('workspace')
+          expect(request.object_type.reporter_type).to eq('rbac')
+          expect(request.relation).to eq(relation)
+          expect(request.subject).to eq(mock_subject)
+          expect(request.pagination.limit).to eq(1000)
+          [mock_response3]
+        end
+
+        list_workspaces(mock_inventory, mock_subject, relation).to_a
+      end
+    end
+
+    context 'when there are no responses' do
+      it 'stops iteration immediately' do
+        allow(mock_inventory).to receive(:streamed_list_objects).and_return([])
+
+        results = list_workspaces(mock_inventory, mock_subject, relation).to_a
+
+        expect(results).to be_empty
+      end
+    end
+
+    context 'when continuation token becomes nil mid-stream' do
+      it 'stops after current page' do
+        call_count = 0
+        allow(mock_inventory).to receive(:streamed_list_objects) do
+          call_count += 1
+          [mock_response3]
+        end
+
+        results = list_workspaces(mock_inventory, mock_subject, relation).to_a
+
+        expect(results.length).to eq(1)
+        expect(call_count).to eq(1)
+      end
+    end
+  end
 end
