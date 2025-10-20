@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'v2'
+
 module Kessel
   module RBAC
     module V2

@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
+require_relative 'v2'
+
 module Kessel
   module RBAC
     module V2
+      include Kessel::Inventory::V1beta2
+
       def workspace_type
         RepresentationType.new(
           resource_type: 'workspace',
