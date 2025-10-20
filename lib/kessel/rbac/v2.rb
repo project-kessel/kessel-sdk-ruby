@@ -3,11 +3,17 @@
 require 'net/http'
 require 'uri'
 require 'json'
+require_relative 'v2_helpers'
+require_relative 'v2_http'
+require_relative '../inventory/v1beta2'
 
 module Kessel
   module RBAC
     module V2
+      include Kessel::Inventory::V1beta2
+
       WORKSPACE_ENDPOINT = '/api/rbac/v2/workspaces/'
+      DEFAULT_PAGE_LIMIT = 1000
       Workspace = Struct.new(:id, :name, :type, :description)
 
       def fetch_default_workspace(rbac_base_endpoint, org_id, auth: nil, http_client: nil)
@@ -18,16 +24,34 @@ module Kessel
         fetch_workspace(rbac_base_endpoint, org_id, 'root', auth: auth, http_client: http_client)
       end
 
-      private
+      def list_workspaces(inventory, subject, relation, continuation_token = nil)
+        Enumerator.new do |yielder|
+          loop do
+            request = StreamedListObjectsRequest.new(
+              object_type: workspace_type,
+              relation: relation,
+              subject: subject,
+              pagination: RequestPagination.new(
+                limit: DEFAULT_PAGE_LIMIT,
+                continuation_token: continuation_token
+              )
+            )
 
-      def run_request(uri, org_id, auth, http_client)
-        request = Net::HTTP::Get.new uri
-        request['x-rh-rbac-org-id'] = org_id
+            has_responses = false
+            streamed_response = inventory.streamed_list_objects(request)
+            streamed_response.each do |response|
+              has_responses = true
+              yielder << response
 
-        auth&.configure_request(request)
+              continuation_token = response&.pagination&.continuation_token
+            end
 
-        http_client.request(request)
+            break if !has_responses || !continuation_token
+          end
+        end
       end
+
+      private
 
       def process_response(response, workspace_type)
         unless response.is_a?(Net::HTTPSuccess)
@@ -69,12 +93,6 @@ module Kessel
 
         response = run_request(uri, org_id, auth, http_client)
         process_response(response, workspace_type)
-      end
-
-      def check_http_client(http_client, uri)
-        return if uri.host == http_client.address && uri.port == http_client.port
-
-        raise 'http client host and port do not match rbac_base_endpoint'
       end
     end
   end
