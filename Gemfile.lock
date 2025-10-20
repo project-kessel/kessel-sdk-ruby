@@ -1,8 +1,8 @@
 PATH
   remote: .
   specs:
-    kessel-sdk (1.4.0)
-      grpc (~> 1.73.0)
+    kessel-sdk (1.4.1)
+      grpc (>= 1.73.0)
 
 GEM
   remote: https://rubygems.org/
@@ -19,7 +19,7 @@ GEM
       minitest (>= 5.1)
       securerandom (>= 0.3)
       tzinfo (~> 2.0, >= 2.0.5)
-      uri (>= 0.13.1)
+      uri (>= 0.13.3)
     ast (2.4.3)
     base64 (0.3.0)
     benchmark (0.4.1)
@@ -172,7 +172,7 @@ GEM
       securerandom (>= 0.1)
       strscan (>= 1.0.0)
       terminal-table (>= 2, < 5)
-      uri (>= 0.12.0)
+      uri (>= 0.12.5)
     strscan (3.1.5)
     terminal-table (4.0.0)
       unicode-display_width (>= 1.1.1, < 4)
@@ -184,7 +184,7 @@ GEM
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
     unicode-emoji (4.1.0)
-    uri (1.0.3)
+    uri (1.0.4)
     webrick (1.9.1)
     yard (0.9.37)
 

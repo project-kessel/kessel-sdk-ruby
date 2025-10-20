@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Runtime dependencies
-  spec.add_dependency 'grpc', '~> 1.73.0'
+  spec.add_dependency 'grpc', '>= 1.73.0'
 
   # Development dependencies - Testing
   spec.add_development_dependency 'rspec', '~> 3.12'
