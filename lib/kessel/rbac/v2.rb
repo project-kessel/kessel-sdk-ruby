@@ -3,8 +3,6 @@
 require 'net/http'
 require 'uri'
 require 'json'
-require_relative 'v2_helpers'
-require_relative 'v2_http'
 require_relative '../inventory/v1beta2'
 
 module Kessel
