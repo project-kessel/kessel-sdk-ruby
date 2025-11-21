@@ -12,6 +12,12 @@ task :check_for_update do
   ruby 'check_for_update.rb'
 end
 
+desc 'run check_bulk sample'
+task :check_bulk do
+  ruby 'check_bulk.rb'
+end
+
+
 desc 'run delete_resource sample'
 task :delete_resource do
   ruby 'delete_resource.rb'
