@@ -35,69 +35,13 @@ GEM
     docile (1.4.1)
     drb (2.2.3)
     ffi (1.17.2)
-    ffi (1.17.2-aarch64-linux-gnu)
-    ffi (1.17.2-aarch64-linux-musl)
-    ffi (1.17.2-arm64-darwin)
-    ffi (1.17.2-x86-linux-gnu)
-    ffi (1.17.2-x86-linux-musl)
-    ffi (1.17.2-x86_64-darwin)
-    ffi (1.17.2-x86_64-linux-gnu)
-    ffi (1.17.2-x86_64-linux-musl)
     fileutils (1.8.0)
     google-protobuf (4.33.1)
-      bigdecimal
-      rake (>= 13)
-    google-protobuf (4.33.1-aarch64-linux-gnu)
-      bigdecimal
-      rake (>= 13)
-    google-protobuf (4.33.1-aarch64-linux-musl)
-      bigdecimal
-      rake (>= 13)
-    google-protobuf (4.33.1-arm64-darwin)
-      bigdecimal
-      rake (>= 13)
-    google-protobuf (4.33.1-x86-linux-gnu)
-      bigdecimal
-      rake (>= 13)
-    google-protobuf (4.33.1-x86-linux-musl)
-      bigdecimal
-      rake (>= 13)
-    google-protobuf (4.33.1-x86_64-darwin)
-      bigdecimal
-      rake (>= 13)
-    google-protobuf (4.33.1-x86_64-linux-gnu)
-      bigdecimal
-      rake (>= 13)
-    google-protobuf (4.33.1-x86_64-linux-musl)
       bigdecimal
       rake (>= 13)
     googleapis-common-protos-types (1.22.0)
       google-protobuf (~> 4.26)
     grpc (1.76.0)
-      google-protobuf (>= 3.25, < 5.0)
-      googleapis-common-protos-types (~> 1.0)
-    grpc (1.76.0-aarch64-linux-gnu)
-      google-protobuf (>= 3.25, < 5.0)
-      googleapis-common-protos-types (~> 1.0)
-    grpc (1.76.0-aarch64-linux-musl)
-      google-protobuf (>= 3.25, < 5.0)
-      googleapis-common-protos-types (~> 1.0)
-    grpc (1.76.0-arm64-darwin)
-      google-protobuf (>= 3.25, < 5.0)
-      googleapis-common-protos-types (~> 1.0)
-    grpc (1.76.0-x86-linux-gnu)
-      google-protobuf (>= 3.25, < 5.0)
-      googleapis-common-protos-types (~> 1.0)
-    grpc (1.76.0-x86-linux-musl)
-      google-protobuf (>= 3.25, < 5.0)
-      googleapis-common-protos-types (~> 1.0)
-    grpc (1.76.0-x86_64-darwin)
-      google-protobuf (>= 3.25, < 5.0)
-      googleapis-common-protos-types (~> 1.0)
-    grpc (1.76.0-x86_64-linux-gnu)
-      google-protobuf (>= 3.25, < 5.0)
-      googleapis-common-protos-types (~> 1.0)
-    grpc (1.76.0-x86_64-linux-musl)
       google-protobuf (>= 3.25, < 5.0)
       googleapis-common-protos-types (~> 1.0)
     i18n (1.14.7)
@@ -197,17 +141,7 @@ GEM
     yard (0.9.37)
 
 PLATFORMS
-  aarch64-linux
-  aarch64-linux-gnu
-  aarch64-linux-musl
-  arm64-darwin
   ruby
-  x86-linux
-  x86-linux-gnu
-  x86-linux-musl
-  x86_64-darwin
-  x86_64-linux-gnu
-  x86_64-linux-musl
 
 DEPENDENCIES
   bundle-audit (~> 0.1)
