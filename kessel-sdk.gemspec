@@ -40,7 +40,7 @@ Gem::Specification.new do |spec|
 
   # Development dependencies - Type checking
   spec.add_development_dependency 'steep', '~> 1.10.0'
-  spec.add_development_dependency 'typeprof', '~> 0.30.1'
+  spec.add_development_dependency 'typeprof', '~> 0.31.0'
 
   if spec.respond_to? :metadata
     spec.metadata['homepage_uri'] = spec.homepage
