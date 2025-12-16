@@ -193,7 +193,7 @@ COVERAGE=1 bundle exec rspec
 bundle exec rubocop
 
 # Security audit
-bundle exec bundle-audit
+bundle exec bundler-audit
 ```
 
 ### Code Generation
@@ -291,7 +291,7 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/). Version n
    bundle exec rubocop
    
    # Run security audit
-   bundle exec bundle-audit check --update
+   bundle exec bundler-audit check --update
    
    # Build and test the gem locally
    rake install_local
