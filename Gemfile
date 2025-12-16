@@ -8,5 +8,5 @@ ruby '~> 3.3'
 gemspec
 
 group :development, :test do
-  gem 'bundle-audit', '~> 0.1'
+  gem 'bundle-audit', '~> 0.2'
 end
