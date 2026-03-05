@@ -7,9 +7,10 @@ require 'google/protobuf'
 require 'buf/validate/validate_pb'
 require 'kessel/inventory/v1beta2/resource_reference_pb'
 require 'kessel/inventory/v1beta2/subject_reference_pb'
+require 'kessel/inventory/v1beta2/consistency_pb'
 
 
-descriptor_data = "\n,kessel/inventory/v1beta2/check_request.proto\x12\x18kessel.inventory.v1beta2\x1a\x1b\x62uf/validate/validate.proto\x1a\x31kessel/inventory/v1beta2/resource_reference.proto\x1a\x30kessel/inventory/v1beta2/subject_reference.proto\"\xce\x01\n\x0c\x43heckRequest\x12K\n\x06object\x18\x01 \x01(\x0b\x32+.kessel.inventory.v1beta2.ResourceReferenceB\x06\xbaH\x03\xc8\x01\x01R\x06object\x12#\n\x08relation\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x08relation\x12L\n\x07subject\x18\x03 \x01(\x0b\x32*.kessel.inventory.v1beta2.SubjectReferenceB\x06\xbaH\x03\xc8\x01\x01R\x07subjectBr\n(org.project_kessel.api.inventory.v1beta2P\x01ZDgithub.com/project-kessel/inventory-api/api/kessel/inventory/v1beta2b\x06proto3"
+descriptor_data = "\n,kessel/inventory/v1beta2/check_request.proto\x12\x18kessel.inventory.v1beta2\x1a\x1b\x62uf/validate/validate.proto\x1a\x31kessel/inventory/v1beta2/resource_reference.proto\x1a\x30kessel/inventory/v1beta2/subject_reference.proto\x1a*kessel/inventory/v1beta2/consistency.proto\"\xac\x02\n\x0c\x43heckRequest\x12K\n\x06object\x18\x01 \x01(\x0b\x32+.kessel.inventory.v1beta2.ResourceReferenceB\x06\xbaH\x03\xc8\x01\x01R\x06object\x12#\n\x08relation\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x08relation\x12L\n\x07subject\x18\x03 \x01(\x0b\x32*.kessel.inventory.v1beta2.SubjectReferenceB\x06\xbaH\x03\xc8\x01\x01R\x07subject\x12L\n\x0b\x63onsistency\x18\x04 \x01(\x0b\x32%.kessel.inventory.v1beta2.ConsistencyH\x00R\x0b\x63onsistency\x88\x01\x01\x42\x0e\n\x0c_consistencyBr\n(org.project_kessel.api.inventory.v1beta2P\x01ZDgithub.com/project-kessel/inventory-api/api/kessel/inventory/v1beta2b\x06proto3"
 
 pool = ::Google::Protobuf::DescriptorPool.generated_pool
 pool.add_serialized_file(descriptor_data)
