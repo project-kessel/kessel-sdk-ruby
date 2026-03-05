@@ -8,7 +8,7 @@ require 'buf/validate/validate_pb'
 require 'kessel/inventory/v1beta2/consistency_token_pb'
 
 
-descriptor_data = "\n*kessel/inventory/v1beta2/consistency.proto\x12\x18kessel.inventory.v1beta2\x1a\x1b\x62uf/validate/validate.proto\x1a\x30kessel/inventory/v1beta2/consistency_token.proto\"\xb2\x01\n\x0b\x43onsistency\x12\x34\n\x10minimize_latency\x18\x01 \x01(\x08\x42\x07\xbaH\x04j\x02\x08\x01H\x00R\x0fminimizeLatency\x12W\n\x11\x61t_least_as_fresh\x18\x02 \x01(\x0b\x32*.kessel.inventory.v1beta2.ConsistencyTokenH\x00R\x0e\x61tLeastAsFreshB\x14\n\x0brequirement\x12\x05\xbaH\x02\x08\x01\x42r\n(org.project_kessel.api.inventory.v1beta2P\x01ZDgithub.com/project-kessel/inventory-api/api/kessel/inventory/v1beta2b\x06proto3"
+descriptor_data = "\n*kessel/inventory/v1beta2/consistency.proto\x12\x18kessel.inventory.v1beta2\x1a\x1b\x62uf/validate/validate.proto\x1a\x30kessel/inventory/v1beta2/consistency_token.proto\"\xf6\x01\n\x0b\x43onsistency\x12\x34\n\x10minimize_latency\x18\x01 \x01(\x08\x42\x07\xbaH\x04j\x02\x08\x01H\x00R\x0fminimizeLatency\x12W\n\x11\x61t_least_as_fresh\x18\x02 \x01(\x0b\x32*.kessel.inventory.v1beta2.ConsistencyTokenH\x00R\x0e\x61tLeastAsFresh\x12\x42\n\x18\x61t_least_as_acknowledged\x18\x03 \x01(\x08\x42\x07\xbaH\x04j\x02\x08\x01H\x00R\x15\x61tLeastAsAcknowledgedB\x14\n\x0brequirement\x12\x05\xbaH\x02\x08\x01\x42r\n(org.project_kessel.api.inventory.v1beta2P\x01ZDgithub.com/project-kessel/inventory-api/api/kessel/inventory/v1beta2b\x06proto3"
 
 pool = ::Google::Protobuf::DescriptorPool.generated_pool
 pool.add_serialized_file(descriptor_data)
