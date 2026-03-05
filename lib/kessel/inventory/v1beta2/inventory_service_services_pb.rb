@@ -28,6 +28,15 @@ module Kessel
           # Common use cases include enforcing read access, conditional UI visibility,
           # or authorization gating for downstream API calls.
           rpc :Check, ::Kessel::Inventory::V1beta2::CheckRequest, ::Kessel::Inventory::V1beta2::CheckResponse
+          # Performs a relationship check where the subject is implicitly the caller
+          # (self), as determined by the authentication context, rather than being
+          # provided explicitly in the request.
+          #
+          # This API answers the question:
+          # "Does the current caller have relation *Y* on object *Z*?"
+          #
+          # Common use cases include enforcing access checks for the authenticated user.
+          rpc :CheckSelf, ::Kessel::Inventory::V1beta2::CheckSelfRequest, ::Kessel::Inventory::V1beta2::CheckSelfResponse
           # Performs a strongly consistent relationship check to determine whether a subject
           # has a specific relation to an object (representing, for example, a permission).
           #
@@ -53,6 +62,16 @@ module Kessel
           #
           # The response includes a result for each item in the request, maintaining the same order.
           rpc :CheckBulk, ::Kessel::Inventory::V1beta2::CheckBulkRequest, ::Kessel::Inventory::V1beta2::CheckBulkResponse
+          # Performs bulk permission checks where the subject is implicitly the caller
+          # (self) for multiple resource-relation combinations.
+          #
+          # This API is more efficient than making individual CheckSelf calls when
+          # verifying permissions for multiple items. It answers questions like:
+          # "Which of these resources can the current caller perform action *Y* on?"
+          #
+          # The response includes a result for each item in the request, maintaining
+          # the same order.
+          rpc :CheckSelfBulk, ::Kessel::Inventory::V1beta2::CheckSelfBulkRequest, ::Kessel::Inventory::V1beta2::CheckSelfBulkResponse
           # Reports to Kessel Inventory that a Resource has been created or has been updated.
           #
           # Reporters can use this API to report facts about their resources in order to
