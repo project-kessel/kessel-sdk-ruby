@@ -48,6 +48,14 @@ module Kessel
           # It is intended to be used just prior to sensitive operation (e.g., update, delete)
           # which depend on the current state of the relationship.
           rpc :CheckForUpdate, ::Kessel::Inventory::V1beta2::CheckForUpdateRequest, ::Kessel::Inventory::V1beta2::CheckForUpdateResponse
+          # Performs bulk strongly consistent "check for update" permission checks.
+          #
+          # This API is more efficient than making individual CheckForUpdate calls when verifying
+          # update permissions for multiple resource-subject-relation combinations. Each item
+          # is evaluated with strong consistency (same semantics as CheckForUpdate).
+          #
+          # Common use cases include batch pre-authorization before bulk update or delete operations.
+          rpc :CheckForUpdateBulk, ::Kessel::Inventory::V1beta2::CheckForUpdateBulkRequest, ::Kessel::Inventory::V1beta2::CheckForUpdateBulkResponse
           # Performs bulk permission checks for multiple resource-subject-relation combinations.
           #
           # This API is more efficient than making individual Check calls when verifying permissions
