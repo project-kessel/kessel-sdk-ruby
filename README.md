@@ -221,10 +221,15 @@ rake install_local
 
 The `examples/` directory contains working examples:
 
+- `auth.rb` - OAuth 2.0 authentication
 - `check.rb` - Permission checking
-- `report_resource.rb` - Reporting resource state
-- `delete_resource.rb` - Deleting resources
+- `check_bulk.rb` - Bulk permission checks
 - `check_for_update.rb` - Checking for updates
+- `check_for_update_bulk.rb` - Bulk strongly consistent update checks
+- `delete_resource.rb` - Deleting resources
+- `fetch_workspaces.rb` - Fetching workspaces
+- `list_workspaces.rb` - Listing workspaces
+- `report_resource.rb` - Reporting resource state
 - `streamed_list_objects.rb` - Streaming resource lists
 
 Run examples:
