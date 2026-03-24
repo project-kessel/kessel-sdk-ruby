@@ -50,10 +50,10 @@ class CheckForUpdateBulkExample
           end
         end
 
-      rescue Exception => e
+      rescue StandardError => e
         p 'gRPC error occurred during check_for_update_bulk:'
-        p "Exception #{e}"
-        raise e
+        p "#{e.class}: #{e.message}"
+        raise
       end
     end
   end
