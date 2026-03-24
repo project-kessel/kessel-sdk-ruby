@@ -225,6 +225,7 @@ The `examples/` directory contains working examples:
 - `check.rb` - Permission checking
 - `check_bulk.rb` - Bulk permission checks
 - `check_for_update.rb` - Checking for updates
+- `check_for_update_bulk.rb` - Bulk strongly consistent update checks
 - `delete_resource.rb` - Deleting resources
 - `fetch_workspaces.rb` - Fetching workspaces
 - `list_workspaces.rb` - Listing workspaces
