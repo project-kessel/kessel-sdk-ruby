@@ -269,12 +269,17 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/). Version n
 
 1. **Update the Version**
    ```bash
-   # Edit lib/kessel/version.rb
-   # Update the VERSION constant to the new version number
+   # Edit lib/kessel/version.rb and update the VERSION constant
    vim lib/kessel/version.rb
    ```
 
-2. **Update Dependencies**
+2. **Set the VERSION environment variable**
+   ```bash
+   export VERSION=$(ruby -e "require_relative './lib/kessel/version.rb'; puts Kessel::Inventory::VERSION")
+   echo "Releasing version: v${VERSION}"
+   ```
+
+3. **Update Dependencies**
    ```bash
    # Generate gRPC code from Kessel Inventory API
    buf generate
@@ -282,7 +287,7 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/). Version n
    bundle install
    ```
 
-3. **Run Quality Checks**
+4. **Run Quality Checks**
    ```bash
    # Run the full test suite
    bundle exec rspec
@@ -297,15 +302,14 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/). Version n
    rake install_local
    ```
 
-4. **Commit Changes**
+5. **Commit Changes**
    ```bash
-   export VERSION=$(ruby -e "require_relative './lib/kessel/version.rb'; puts Kessel::Inventory::VERSION")
    git add lib/kessel/version.rb Gemfile.lock
    git commit -m "Release version ${VERSION}"
    git push origin main # or git push upstream main
    ```
 
-5. **Build and Release the Gem**
+6. **Build and Release the Gem**
    ```bash
    # Build the gem
    gem build kessel-sdk.gemspec
@@ -314,21 +318,27 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/). Version n
    gem push kessel-sdk-${VERSION}.gem
    ```
 
-6. **Tag the Release**
+7. **Tag the Release**
    ```bash
    # Create and push a git tag
    git tag -a v${VERSION} -m "Release version ${VERSION}"
    git push origin v${VERSION} # or git push upstream v${VERSION} 
    ```
 
-7. **Create a new release in github**
-- Go to the [GitHub Releases page](https://github.com/project-kessel/kessel-sdk-ruby/releases)
-- Click "Create a new release"
-- Select the tag you just created
-- Add release notes describing the changes
-- Publish the release
+8. **Create GitHub Release**
+   ```bash
+   gh release create v${VERSION} --title "v${VERSION}" --generate-notes
+   ```
 
-8. **Clean Up**
+   Or manually:
+
+   - Go to the [GitHub Releases page](https://github.com/project-kessel/kessel-sdk-ruby/releases)
+   - Click "Create a new release"
+   - Select the tag you just created
+   - Add release notes describing the changes
+   - Publish the release
+
+9. **Clean Up**
    ```bash
    # Remove the built gem file
    rake clean
@@ -352,7 +362,7 @@ rake install
 rake release
 ```
 
-**Note**: The `rake release` command automates steps 5-6 above but requires proper git and RubyGems credentials to be configured.
+**Note**: The `rake release` command automates steps 6-7 above but requires proper git and RubyGems credentials to be configured.
 
 ## Contributing
 
