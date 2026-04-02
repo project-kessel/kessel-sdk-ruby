@@ -132,6 +132,17 @@ module Kessel
           #
           # Pagination and consistency controls allow fine-tuned performance and data freshness.
           rpc :StreamedListObjects, ::Kessel::Inventory::V1beta2::StreamedListObjectsRequest, stream(::Kessel::Inventory::V1beta2::StreamedListObjectsResponse)
+          # Streams a list of subjects that have the specified relation to a resource.
+          #
+          # This relationship query answers the question:
+          # "Which subjects of type *X* have relation *Y* to resource *Z*?"
+          #
+          # It is often used for access auditing, troubleshooting permissions, or
+          # displaying lists of users/principals with specific access to a resource.
+          # The result is streamed incrementally to support large datasets.
+          #
+          # Pagination and consistency controls allow fine-tuned performance and data freshness.
+          rpc :StreamedListSubjects, ::Kessel::Inventory::V1beta2::StreamedListSubjectsRequest, stream(::Kessel::Inventory::V1beta2::StreamedListSubjectsResponse)
         end
 
         Stub = Service.rpc_stub_class
