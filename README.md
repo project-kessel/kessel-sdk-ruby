@@ -129,6 +129,29 @@ The library includes the following gRPC services:
   - `delete_resource(DeleteResourceRequest)` - Delete a resource
   - `streamed_list_objects(StreamedListObjectsRequest)` - Stream resource listings
 
+### Listing Workspaces
+
+The `list_workspaces` helper automatically paginates through all workspaces
+a subject can access. Continuation tokens are handled internally, meaning you never
+need to manage them yourself.
+
+```ruby
+include Kessel::RBAC::V2
+
+# `inventory` is a KesselInventoryService::Stub, created as shown in the earlier examples.
+subject = principal_subject("alice", "redhat")
+
+# Lazy iteration (constant memory)
+list_workspaces(inventory, subject, "viewer").each do |response|
+  puts response.object.resource_id
+end
+
+# Materialise into an Array
+all_workspaces = list_workspaces(inventory, subject, "viewer").to_a
+```
+
+See [`examples/list_workspaces.rb`](./examples/list_workspaces.rb) for a complete working example.
+
 ### Generated Classes
 
 All protobuf message classes are generated and available. Key classes include:
