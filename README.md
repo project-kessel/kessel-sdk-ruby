@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/project-kessel/kessel-sdk-ruby/actions/workflows/ci.yml/badge.svg)](https://github.com/project-kessel/kessel-sdk-ruby/actions/workflows/ci.yml)
 
-A Ruby gRPC library for connecting to [Project Kessel](https://github.com/project-kessel) services. This provides the foundational gRPC client library for Kessel Inventory API, with plans for a higher-level SDK with fluent APIs, OAuth support, and advanced features in future releases.
+The official Ruby gRPC client SDK for [Project Kessel](https://github.com/project-kessel) services. It provides generated protobuf/gRPC bindings for the Kessel Inventory API, a fluent client builder with credential validation, OAuth 2.0 Client Credentials authentication (via OIDC), and RBAC convenience helpers for workspace operations.
+
+Published on RubyGems as [`kessel-sdk`](https://rubygems.org/gems/kessel-sdk).
 
 ## Installation
 
@@ -24,7 +26,7 @@ Or install it yourself as:
 gem install kessel-sdk
 ```
 
-## Authentication (Optional)
+### Authentication (Optional)
 
 The SDK supports OAuth 2.0 Client Credentials flow. To use authentication features, add the OpenID Connect gem:
 
@@ -33,21 +35,103 @@ gem 'kessel-sdk'
 gem 'openid_connect', '~> 2.0'  # Optional - only for authentication
 ```
 
+The `openid_connect` gem is intentionally not a hard runtime dependency. Consumers who do not need OAuth are not forced to install it or its transitive dependencies.
+
+## Project Structure
+
+```
+lib/
+  kessel-sdk.rb              # Single entrypoint (require 'kessel-sdk')
+  kessel/
+    auth.rb                  # OAuth2 Client Credentials, OIDC discovery
+    grpc.rb                  # gRPC credential helpers
+    inventory.rb             # ClientBuilder base class, client_builder_for_stub
+    version.rb               # Kessel::Inventory::VERSION
+    inventory/
+      v1/                    # Health check service (stable)
+      v1beta1/               # Legacy typed K8s resources/relationships
+      v1beta2/               # Current unified inventory service (primary API)
+    rbac/
+      v2.rb                  # Workspace fetch, list_workspaces enumerator
+      v2_helpers.rb          # Factory methods for protobuf references
+      v2_http.rb             # HTTP request helpers for RBAC API
+sig/                         # RBS type signatures for hand-written code
+spec/                        # RSpec test suite
+examples/                    # Working examples with dotenv configuration
+docs/                        # Domain-specific guidelines (see Documentation below)
+```
+
+Files under `lib/kessel/inventory/v*/`, `lib/google/`, and `lib/buf/` are **generated** by `buf generate` and must never be hand-edited. They are automatically regenerated every 6 hours via CI.
+
 ## Usage
 
-This library provides direct access to Kessel Inventory API gRPC services. All generated classes are available under the `Kessel::Inventory` module.
-
-### Basic Example - Check Permissions
+Load the complete SDK via the single entrypoint:
 
 ```ruby
-require 'kessel/inventory/v1beta2/inventory_service_services_pb'
+require 'kessel-sdk'
+```
 
+### Building a Client
+
+The recommended way to create gRPC clients is with the **`ClientBuilder` fluent API**, which enforces credential validation at configuration time. Every gRPC service module exposes a `ClientBuilder` constant.
+
+#### Insecure (Development Only)
+
+```ruby
 include Kessel::Inventory::V1beta2
 
-# Create gRPC client (insecure for development)
-client = KesselInventoryService::Stub.new('localhost:9000', :this_channel_is_insecure)
+client = KesselInventoryService::ClientBuilder.new('localhost:9000')
+                                              .insecure
+                                              .build
+```
 
-# Create subject reference
+#### OAuth2 Client Credentials (Production)
+
+```ruby
+include Kessel::Inventory::V1beta2
+include Kessel::Auth
+
+# Discover the token endpoint via OIDC
+discovery = fetch_oidc_discovery('https://sso.example.com/auth/realms/my-realm')
+
+# Create OAuth2 credentials
+oauth = OAuth2ClientCredentials.new(
+  client_id: 'my-app',
+  client_secret: 'my-secret',
+  token_endpoint: discovery.token_endpoint
+)
+
+# Build the client -- tokens are cached and refreshed automatically
+client = KesselInventoryService::ClientBuilder.new('kessel.example.com:443')
+                                              .oauth2_client_authenticated(oauth2_client_credentials: oauth)
+                                              .build
+```
+
+#### Custom or No Credentials
+
+```ruby
+# Custom call/channel credentials
+client = KesselInventoryService::ClientBuilder.new(target)
+                                              .authenticated(call_credentials: creds, channel_credentials: ch_creds)
+                                              .build
+
+# No call credentials (TLS channel only)
+client = KesselInventoryService::ClientBuilder.new(target)
+                                              .unauthenticated
+                                              .build
+```
+
+Build the client **once at application startup and reuse it**. The underlying gRPC channel manages its own HTTP/2 connection pool.
+
+### Check Permissions
+
+```ruby
+include Kessel::Inventory::V1beta2
+
+client = KesselInventoryService::ClientBuilder.new('localhost:9000')
+                                              .insecure
+                                              .build
+
 subject_reference = SubjectReference.new(
   resource: ResourceReference.new(
     reporter: ReporterReference.new(type: 'rbac'),
@@ -56,14 +140,12 @@ subject_reference = SubjectReference.new(
   )
 )
 
-# Create resource reference
 resource = ResourceReference.new(
   reporter: ReporterReference.new(type: 'rbac'),
   resource_id: 'workspace456',
   resource_type: 'workspace'
 )
 
-# Check permissions
 begin
   response = client.check(
     CheckRequest.new(
@@ -73,80 +155,95 @@ begin
     )
   )
   puts "Permission check result: #{response.allowed}"
-rescue => e
-  puts "Error: #{e.message}"
+rescue GRPC::BadStatus => e
+  puts "gRPC error: #{e.message}"
 end
 ```
 
-### Report Resource Example
+### Bulk Permission Checks
 
 ```ruby
-require 'kessel/inventory/v1beta2/inventory_service_services_pb'
-
 include Kessel::Inventory::V1beta2
+include Kessel::RBAC::V2
 
-client = KesselInventoryService::Stub.new('localhost:9000', :this_channel_is_insecure)
+client = KesselInventoryService::ClientBuilder.new('localhost:9000')
+                                              .insecure
+                                              .build
 
-# Report a new resource
-resource_data = {
-  'apiVersion' => 'v1',
-  'kind' => 'Namespace', 
-  'metadata' => {
-    'name' => 'my-namespace',
-    'uid' => '12345'
-  }
-}
-
-request = ReportResourceRequest.new(
-  resource: ResourceRepresentations.new(
-    kessel_inventory: {
-      metadata: RepresentationMetadata.new(
-        resource_type: 'k8s-namespace',
-        resource_id: resource_data['metadata']['uid'],
-        workspace: 'default'
-      )
-    },
-    k8s_manifest: resource_data.to_json
-  )
+response = client.check_bulk(
+  CheckBulkRequest.new(items: [
+    CheckBulkRequestItem.new(
+      object: workspace_resource('workspace_123'),
+      relation: 'view_widget',
+      subject: principal_subject('bob', 'redhat')
+    ),
+    CheckBulkRequestItem.new(
+      object: workspace_resource('workspace_456'),
+      relation: 'use_widget',
+      subject: principal_subject('alice', 'redhat')
+    )
+  ])
 )
 
-begin
-  response = client.report_resource(request)
-  puts "Resource reported successfully"
-rescue => e
-  puts "Error reporting resource: #{e.message}"
+response.pairs.each do |pair|
+  if pair.item
+    puts "Allowed: #{pair.item.allowed}"
+  elsif pair.error
+    puts "Error: #{pair.error.message}"
+  end
 end
 ```
 
-### Available Services
+### List Workspaces (Streaming with Auto-Pagination)
 
-The library includes the following gRPC services:
+```ruby
+include Kessel::Inventory::V1beta2
+include Kessel::RBAC::V2
 
-- **KesselInventoryService**: Main inventory service
-  - `check(CheckRequest)` - Check permissions
-  - `check_for_update(CheckForUpdateRequest)` - Check for resource updates  
-  - `report_resource(ReportResourceRequest)` - Report resource state
-  - `delete_resource(DeleteResourceRequest)` - Delete a resource
-  - `streamed_list_objects(StreamedListObjectsRequest)` - Stream resource listings
+client = KesselInventoryService::ClientBuilder.new('localhost:9000')
+                                              .insecure
+                                              .build
 
-### Generated Classes
+list_workspaces(client, principal_subject('alice', 'redhat'), 'view_document').each do |response|
+  puts response
+end
+```
 
-All protobuf message classes are generated and available. Key classes include:
+### Available Services (V1beta2)
 
-- `CheckRequest`, `CheckResponse`
-- `ReportResourceRequest`, `ReportResourceResponse` 
-- `DeleteResourceRequest`, `DeleteResourceResponse`
-- `ResourceReference`, `SubjectReference`
-- `ResourceRepresentations`, `RepresentationMetadata`
+The primary service is **`KesselInventoryService`** with these RPCs:
 
-See the `examples/` directory for complete working examples.
+| RPC | Description |
+|-----|-------------|
+| `check` | Check if a subject has a relation on a resource |
+| `check_self` | Check using the caller's identity from auth context |
+| `check_for_update` | Strongly consistent check (use before writes) |
+| `check_bulk` | Batch permission checks (up to 1000 items) |
+| `check_self_bulk` | Batch self-checks |
+| `check_for_update_bulk` | Batch strongly consistent checks |
+| `report_resource` | Report resource state to inventory |
+| `delete_resource` | Delete a resource from inventory |
+| `streamed_list_objects` | Stream objects a subject has a relation to |
+| `streamed_list_subjects` | Stream subjects that have a relation to a resource |
+
+### RBAC Helper Methods
+
+The `Kessel::RBAC::V2` module provides factory methods for common protobuf references (all use `reporter_type: 'rbac'`):
+
+- `workspace_resource(id)` / `role_resource(id)` -- `ResourceReference` factories
+- `principal_resource(id, domain)` -- `ResourceReference` with ID formatted as `"domain/id"`
+- `principal_subject(id, domain)` -- `SubjectReference` wrapping a principal resource
+- `subject(resource_ref, relation)` -- generic `SubjectReference` factory
+- `fetch_default_workspace(endpoint, org_id, auth:, http_client:)` -- fetch default workspace via RBAC HTTP API
+- `fetch_root_workspace(endpoint, org_id, auth:, http_client:)` -- fetch root workspace via RBAC HTTP API
+- `list_workspaces(inventory, subject, relation)` -- lazy `Enumerator` with auto-pagination
 
 ## Type Safety
 
 This library includes RBS type signatures for enhanced type safety in Ruby. The type definitions are located in the `sig/` directory and cover:
 
 - Core library interfaces
-- Configuration structures  
+- Configuration structures
 - OAuth authentication classes
 - gRPC client builders
 
@@ -156,7 +253,7 @@ To use with type checkers like Steep or Sorbet, ensure the `sig/` directory is i
 
 ### Prerequisites
 
-- Ruby 3.3 or higher  
+- Ruby 3.3 or higher
 - [buf](https://buf.build) for protobuf/gRPC code generation
 
 Install buf:
@@ -219,34 +316,42 @@ rake install_local
 
 ## Examples
 
-The `examples/` directory contains working examples:
+The `examples/` directory contains working examples. Set up environment variables in `examples/.env` before running.
 
-- `auth.rb` - OAuth 2.0 authentication
-- `check.rb` - Permission checking
-- `check_bulk.rb` - Bulk permission checks
-- `check_for_update.rb` - Checking for updates
-- `check_for_update_bulk.rb` - Bulk strongly consistent update checks
-- `delete_resource.rb` - Deleting resources
-- `fetch_workspaces.rb` - Fetching workspaces
-- `list_workspaces.rb` - Listing workspaces
-- `report_resource.rb` - Reporting resource state
-- `streamed_list_objects.rb` - Streaming resource lists
+| Example | Description |
+|---------|-------------|
+| `auth.rb` | OAuth 2.0 authentication with ClientBuilder |
+| `check.rb` | Permission checking |
+| `check_bulk.rb` | Bulk permission checks |
+| `check_for_update.rb` | Strongly consistent update checks |
+| `check_for_update_bulk.rb` | Bulk strongly consistent update checks |
+| `delete_resource.rb` | Deleting resources |
+| `fetch_workspaces.rb` | Fetching workspaces via RBAC HTTP API |
+| `list_workspaces.rb` | Listing workspaces with auto-pagination |
+| `report_resource.rb` | Reporting resource state |
+| `streamed_list_objects.rb` | Streaming resource lists |
 
 Run examples:
 
 ```bash
 cd examples
+bundle install
 ruby check.rb
 ```
 
-## Roadmap
+## Documentation
 
-This is the foundational gRPC library. Future releases will include:
+Detailed domain-specific guidelines are maintained in the `docs/` directory:
 
-- **High-level SDK**: Fluent client builder API
-- **Authentication**: OAuth 2.0 Client Credentials flow
-- **Convenience Methods**: Simplified APIs for common operations*
-*
+- **[API Contracts](docs/api-contracts-guidelines.md)** -- Protobuf code generation, module/namespace mapping, ClientBuilder API, request/response patterns, and RBS type signatures
+- **[Integration](docs/integration-guidelines.md)** -- gRPC client construction, authentication flows, RBAC helpers, streaming/pagination, and environment configuration
+- **[Security](docs/security-guidelines.md)** -- Token caching thread safety, gRPC channel security, credential validation, and secrets management
+- **[Performance](docs/performance-guidelines.md)** -- Token caching, gRPC client reuse, bulk vs. individual operations, consistency controls, and streaming pagination
+- **[Error Handling](docs/error-handling-guidelines.md)** -- Custom exception hierarchy, error wrapping conventions, and gRPC error passthrough policy
+- **[Testing](docs/testing-guidelines.md)** -- RSpec configuration, mocking conventions, coverage setup, and CI expectations
+
+For AI-assisted development context, see [AGENTS.md](AGENTS.md).
+
 ## Release Instructions
 
 This section provides step-by-step instructions for maintainers to release a new version of the Kessel SDK for Ruby.
@@ -256,7 +361,7 @@ This section provides step-by-step instructions for maintainers to release a new
 This project follows [Semantic Versioning 2.0.0](https://semver.org/). Version numbers use the format `MAJOR.MINOR.PATCH`:
 
 - **MAJOR**: Increment for incompatible API changes
-- **MINOR**: Increment for backward-compatible functionality additions  
+- **MINOR**: Increment for backward-compatible functionality additions
 - **PATCH**: Increment for backward-compatible bug fixes
 
 **Note**: SDK versions across different languages (Ruby, Python, Go, etc.) do not need to be synchronized. Each language SDK can evolve independently based on its specific requirements and release schedule.
@@ -376,6 +481,8 @@ rake release
 3. Commit your changes (`git commit -am 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+Please review the [domain-specific guidelines](docs/) before contributing. All specs must pass on Ruby 3.3 and 3.4. Fix RuboCop violations before merging, and update RBS type signatures in `sig/kessel/` when modifying hand-written code.
 
 ## License
 
