@@ -329,6 +329,7 @@ The `examples/` directory contains working examples. Set up environment variable
 | `fetch_workspaces.rb` | Fetching workspaces via RBAC HTTP API |
 | `list_workspaces.rb` | Listing workspaces with auto-pagination |
 | `report_resource.rb` | Reporting resource state |
+| `console_principal.rb` | Building principals from `x-rh-identity` headers |
 | `streamed_list_objects.rb` | Streaming resource lists |
 
 Run examples:
