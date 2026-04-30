@@ -7,7 +7,7 @@ require_relative 'rbac/v2_helpers'
 module Kessel
   module Console
     include Kessel::RBAC::V2
-    extend  Kessel::RBAC::V2
+    extend self
 
     DEFAULT_DOMAIN = 'redhat'
 
@@ -15,8 +15,6 @@ module Kessel
       'User' => 'user',
       'ServiceAccount' => 'service_account'
     }.freeze
-
-    module_function
 
     def principal_from_rh_identity(identity, domain: DEFAULT_DOMAIN)
       user_id = extract_user_id(identity)
@@ -35,6 +33,8 @@ module Kessel
 
       principal_from_rh_identity(identity, domain: domain)
     end
+
+    private
 
     def extract_user_id(identity)
       raise ArgumentError, 'identity must be a Hash' unless identity.is_a?(Hash)
@@ -67,7 +67,5 @@ module Kessel
 
       user_id
     end
-
-    private_class_method :extract_user_id, :identity_field_for, :identity_details_for, :resolve_user_id
   end
 end
