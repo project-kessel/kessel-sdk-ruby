@@ -22,6 +22,26 @@ module Kessel
         fetch_workspace(rbac_base_endpoint, org_id, 'root', auth: auth, http_client: http_client)
       end
 
+      # Lists all workspaces that a subject has a specific relation to.
+      #
+      # Pagination is handled automatically -- continuation tokens are managed
+      # internally. The returned +Enumerator+ is lazy; each page is fetched
+      # only when the next element is requested.
+      #
+      # @param inventory [Object] the inventory service client stub
+      # @param subject [SubjectReference] the subject to check permissions for
+      # @param relation [String] the relationship type (e.g. "member", "admin", "viewer")
+      # @param continuation_token [String, nil] optional token to resume listing
+      # @return [Enumerator] a lazy enumerator of +StreamedListObjectsResponse+ objects
+      #
+      # @example Lazy iteration (constant memory)
+      #   list_workspaces(inventory, subject, "viewer").each do |response|
+      #     puts response.object.resource_id
+      #   end
+      #
+      # @example Materialise into an Array (eager, all results in memory)
+      #   all_workspaces = list_workspaces(inventory, subject, "viewer").to_a
+      #
       def list_workspaces(inventory, subject, relation, continuation_token = nil)
         Enumerator.new do |yielder|
           loop do

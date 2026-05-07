@@ -12,10 +12,15 @@ begin
                                                 .insecure
                                                 .build
 
+  # Iterate one-by-one (lazy, constant memory)
   p "Listing workspaces"
   list_workspaces(client, principal_subject("alice", "redhat"), "view_document").each do |response|
     p response
   end
+
+  # Materialise all workspaces into an Array
+  all_workspaces = list_workspaces(client, principal_subject("alice", "redhat"), "view_document").to_a
+  p "Total workspaces: #{all_workspaces.length}"
 rescue Exception => e
   p 'Error occurred while listing workspaces'
   p "Exception: #{e}"
