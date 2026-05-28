@@ -6,17 +6,21 @@
 
 `OAuth2ClientCredentials` caches the access token in `@cached_token` and protects refresh with `@token_mutex`. Creating multiple instances defeats caching and causes redundant token requests.
 
-### Token refresh uses double-checked locking -- do not bypass it
+### Token refresh uses double-checked locking with a generation counter -- do not bypass it
 
-`get_token` checks `token_valid?` outside the mutex for the fast path, then re-checks inside `@token_mutex.synchronize` to prevent thundering herd. When adding new auth flows, follow this exact pattern:
+`get_token` checks `token_valid?` outside the mutex for the fast path, then uses a generation counter inside `@token_mutex.synchronize` to coalesce concurrent refresh requests (including `force_refresh: true`) into a single SSO call per refresh cycle. When adding new auth flows, follow this exact pattern:
 
 ```ruby
 return @cached_token if !force_refresh && token_valid?
+generation = @generation
 @token_mutex.synchronize do
-  return @cached_token if token_valid?
+  return @cached_token if @generation != generation && token_valid?
   @cached_token = refresh
+  @generation += 1
 end
 ```
+
+The generation counter prevents the thundering herd for `force_refresh: true` concurrent callers. Without it, each caller that enters the mutex would clear the cache and issue its own SSO request. The generation snapshot taken before acquiring the lock lets waiters detect that another thread already refreshed, so they return the fresh token without a redundant network call.
 
 ### Frozen token response objects prevent accidental mutation
 
@@ -28,7 +32,7 @@ end
 
 ### Use `force_refresh: true` sparingly
 
-`get_token(force_refresh: true)` clears the cache inside the mutex and forces a network call. Only use it after receiving an explicit 401/UNAUTHENTICATED error, never preemptively.
+`get_token(force_refresh: true)` forces a token refresh inside the mutex. Concurrent `force_refresh` callers coalesce into a single SSO request via the generation counter. Only use it after receiving an explicit 401/UNAUTHENTICATED error, never preemptively.
 
 ## gRPC Client Lifecycle
 

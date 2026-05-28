@@ -8,8 +8,8 @@
 - Avoid adding `openid_connect` as a hard runtime dependency; it should remain optional so consumers who do not need OAuth are not forced to install it.
 
 ### Token Caching and Thread Safety
-- `OAuth2ClientCredentials` uses a `Mutex` (`@token_mutex`) to synchronize token refresh across threads. Maintain this pattern -- token operations should remain thread-safe.
-- The `get_token` method uses a double-check pattern: it checks `token_valid?` before acquiring the lock, then checks again inside the synchronized block to prevent redundant refreshes.
+- `OAuth2ClientCredentials` uses a `Mutex` (`@token_mutex`) with a `@generation` counter to synchronize token refresh across threads. Maintain this pattern -- token operations should remain thread-safe.
+- The `get_token` method uses double-checked locking with a generation counter: it checks `token_valid?` before acquiring the lock, snapshots `@generation`, then inside the synchronized block checks whether `@generation` changed (indicating another thread already refreshed). This prevents both stale-token and `force_refresh` thundering herd scenarios -- concurrent callers coalesce into a single SSO request per refresh cycle.
 - Cached tokens are frozen with `.freeze` after creation in the `refresh` method. Preserve the freeze call -- it prevents accidental mutation of shared token state.
 
 ### Token Expiration Window

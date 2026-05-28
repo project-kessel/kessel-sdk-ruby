@@ -130,6 +130,7 @@ module Kessel
         @client_secret = client_secret
         @token_endpoint = token_endpoint
         @token_mutex = Mutex.new
+        @generation = 0
       end
 
       # Gets the current access token with automatic caching and refresh.
@@ -146,13 +147,14 @@ module Kessel
       def get_token(force_refresh: false)
         return @cached_token if !force_refresh && token_valid?
 
-        @token_mutex.synchronize do
-          @cached_token = nil if force_refresh
+        generation = @generation
 
-          # Double-check: another thread might have refreshed the token
-          return @cached_token if token_valid?
+        @token_mutex.synchronize do
+          # Another thread already refreshed while we waited on the lock
+          return @cached_token if @generation != generation && token_valid?
 
           @cached_token = refresh
+          @generation += 1
 
           return @cached_token
         rescue StandardError => e
