@@ -41,6 +41,9 @@ module Kessel
 
     # OpenID Connect Client Credentials flow implementation
     class OAuth2ClientCredentials
+      @token_mutex: Mutex
+      @generation: Integer
+
       def initialize: (client_id: String, client_secret: String, token_endpoint: String) -> void
       def get_token: (?force_refresh: bool) -> RefreshTokenResponse
 
