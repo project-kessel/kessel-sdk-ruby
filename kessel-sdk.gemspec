@@ -39,7 +39,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'yard', '~> 0.9'
 
   # Development dependencies - Type checking
-  spec.add_development_dependency 'steep', '~> 1.10.0'
+  spec.add_development_dependency 'steep', '~> 2.0.0'
   spec.add_development_dependency 'typeprof', '~> 0.32.0'
 
   if spec.respond_to? :metadata
