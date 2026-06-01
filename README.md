@@ -196,6 +196,10 @@ end
 
 ### List Workspaces (Streaming with Auto-Pagination)
 
+The `list_workspaces` helper automatically paginates through all workspaces
+a subject can access. Continuation tokens are handled internally, meaning you never
+need to manage them yourself.
+
 ```ruby
 include Kessel::Inventory::V1beta2
 include Kessel::RBAC::V2
@@ -204,10 +208,18 @@ client = KesselInventoryService::ClientBuilder.new('localhost:9000')
                                               .insecure
                                               .build
 
-list_workspaces(client, principal_subject('alice', 'redhat'), 'view_document').each do |response|
-  puts response
+subject = principal_subject("alice", "redhat")
+
+# Lazy iteration (constant memory)
+list_workspaces(client, subject, "viewer").each do |response|
+  puts response.object.resource_id
 end
+
+# Materialise into an Array
+all_workspaces = list_workspaces(client, subject, "viewer").to_a
 ```
+
+See [`examples/list_workspaces.rb`](./examples/list_workspaces.rb) for a complete working example.
 
 ### Available Services (V1beta2)
 
