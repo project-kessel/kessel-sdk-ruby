@@ -38,8 +38,8 @@ module Kessel
       # Creates a subject reference
       def subject: (Kessel::Inventory::V1beta2::ResourceReference resource_ref, ?String? relation) -> Kessel::Inventory::V1beta2::SubjectReference
 
-      # Lists all workspaces, allowing to resume with a continuation_token
-      def list_workspaces: (untyped inventory, Kessel::Inventory::V1beta2::SubjectReference subject, String relation, ?String? continuation_token) -> Enumerator[untyped, void]
+      # Lists all workspaces, allowing to resume with a continuation_token and optional consistency token
+      def list_workspaces: (untyped inventory, Kessel::Inventory::V1beta2::SubjectReference subject, String relation, ?String? continuation_token, ?consistency: Kessel::Inventory::V1beta2::Consistency?) -> Enumerator[untyped, void]
     end
   end
 end

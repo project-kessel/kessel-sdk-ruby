@@ -62,7 +62,7 @@ KesselInventoryService::ClientBuilder.new(target)
 
 ## Streaming and Pagination
 
-- `list_workspaces(inventory, subject, relation, continuation_token = nil)` returns a lazy `Enumerator` that automatically paginates through `streamed_list_objects` responses with a page limit of 1000 (`DEFAULT_PAGE_LIMIT`). Iteration stops when there are no responses or the `continuation_token` becomes `nil`/falsey.
+- `list_workspaces(inventory, subject, relation, continuation_token = nil, consistency: nil)` returns a lazy `Enumerator` that automatically paginates through `streamed_list_objects` responses with a page limit of 1000 (`DEFAULT_PAGE_LIMIT`). When provided, the same `consistency` requirement is sent on every paginated request. Iteration stops when there are no responses or the `continuation_token` becomes `nil`/falsey.
 - For direct streaming calls, `streamed_list_objects` and `streamed_list_subjects` return server-streaming enumerables. Iterate with `.each` to process responses incrementally.
 
 ## Environment Configuration

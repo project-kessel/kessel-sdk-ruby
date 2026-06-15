@@ -32,17 +32,20 @@ module Kessel
       # @param subject [SubjectReference] the subject to check permissions for
       # @param relation [String] the relationship type (e.g. "member", "admin", "viewer")
       # @param continuation_token [String, nil] optional token to resume listing
+      # @param consistency [Consistency, nil] optional consistency requirements for each request
       # @return [Enumerator] a lazy enumerator of +StreamedListObjectsResponse+ objects
       #
       # @example Lazy iteration (constant memory)
-      #   list_workspaces(inventory, subject, "viewer").each do |response|
+      #   consistency = Kessel::Inventory::V1beta2::Consistency.new(minimize_latency: true)
+      #   list_workspaces(inventory, subject, "viewer", consistency: consistency).each do |response|
       #     puts response.object.resource_id
       #   end
       #
       # @example Materialise into an Array (eager, all results in memory)
-      #   all_workspaces = list_workspaces(inventory, subject, "viewer").to_a
+      #   consistency = Kessel::Inventory::V1beta2::Consistency.new(minimize_latency: true)
+      #   all_workspaces = list_workspaces(inventory, subject, "viewer", consistency: consistency).to_a
       #
-      def list_workspaces(inventory, subject, relation, continuation_token = nil)
+      def list_workspaces(inventory, subject, relation, continuation_token = nil, consistency: nil)
         Enumerator.new do |yielder|
           loop do
             request = StreamedListObjectsRequest.new(
@@ -52,7 +55,8 @@ module Kessel
               pagination: RequestPagination.new(
                 limit: DEFAULT_PAGE_LIMIT,
                 continuation_token: continuation_token
-              )
+              ),
+              consistency: consistency
             )
 
             has_responses = false
