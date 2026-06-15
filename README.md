@@ -209,14 +209,15 @@ client = KesselInventoryService::ClientBuilder.new('localhost:9000')
                                               .build
 
 subject = principal_subject("alice", "redhat")
+consistency = Kessel::Inventory::V1beta2::Consistency.new(minimize_latency: true)
 
 # Lazy iteration (constant memory)
-list_workspaces(client, subject, "viewer").each do |response|
+list_workspaces(client, subject, "viewer", consistency: consistency).each do |response|
   puts response.object.resource_id
 end
 
 # Materialise into an Array
-all_workspaces = list_workspaces(client, subject, "viewer").to_a
+all_workspaces = list_workspaces(client, subject, "viewer", consistency: consistency).to_a
 ```
 
 See [`examples/list_workspaces.rb`](./examples/list_workspaces.rb) for a complete working example.

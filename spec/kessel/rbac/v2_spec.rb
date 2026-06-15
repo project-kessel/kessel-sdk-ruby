@@ -403,5 +403,47 @@ RSpec.describe Kessel::RBAC::V2 do
         expect(call_count).to eq(1)
       end
     end
+
+    context 'when consistency is provided' do
+      let(:consistency) { Kessel::Inventory::V1beta2::Consistency.new(minimize_latency: true) }
+
+      it 'passes consistency to each request' do
+        allow(mock_inventory).to receive(:streamed_list_objects) do |request|
+          expect(request.consistency).to eq(consistency)
+          [mock_response3]
+        end
+
+        list_workspaces(mock_inventory, mock_subject, relation, consistency: consistency).to_a
+      end
+
+      it 'preserves consistency across paginated requests' do
+        call_count = 0
+        allow(mock_inventory).to receive(:streamed_list_objects) do |request|
+          call_count += 1
+          expect(request.consistency).to eq(consistency)
+          case call_count
+          when 1
+            [mock_response1, mock_response2]
+          when 2
+            [mock_response3]
+          end
+        end
+
+        list_workspaces(mock_inventory, mock_subject, relation, consistency: consistency).to_a
+
+        expect(call_count).to eq(2)
+      end
+    end
+
+    context 'when consistency is nil (default)' do
+      it 'does not set consistency on the request' do
+        allow(mock_inventory).to receive(:streamed_list_objects) do |request|
+          expect(request.consistency).to be_nil
+          [mock_response3]
+        end
+
+        list_workspaces(mock_inventory, mock_subject, relation).to_a
+      end
+    end
   end
 end
