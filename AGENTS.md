@@ -123,6 +123,12 @@ When adding or changing public API surface, create or update corresponding examp
 #### Preferred example structure
 
 ```ruby
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'dotenv/load'
+require 'kessel-sdk'
+
 class FeatureExample
   class << self
     include Kessel::Inventory::V1beta2
