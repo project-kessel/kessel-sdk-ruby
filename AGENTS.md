@@ -107,6 +107,52 @@ The `ClientBuilder` uses a fluent API where authentication methods (`insecure`, 
 - Newer examples (preferred pattern) use a class with `class << self` and `rescue StandardError => e` with bare `raise`. Older examples use top-level `include` and `rescue Exception => e`.
 - Use `ENV.fetch('VAR_NAME', nil)` for environment variable access, not `ENV['VAR_NAME']`.
 
+## Maintaining Examples
+
+When adding or changing public API surface, agents must create or update corresponding example scripts in `examples/`.
+
+### When to add or update examples
+
+- **New SDK method or service**: Add a new example demonstrating basic usage.
+- **Changed method signature or behavior**: Update any existing example that calls the affected API.
+- **New authentication or connection pattern**: Add an example showing the new pattern end-to-end.
+- **Deprecated API replaced**: Update examples to use the replacement; remove references to the deprecated path.
+
+### Conventions
+
+- **Directory**: All examples live in `examples/` at the repository root, with their own `Gemfile` (includes `dotenv` and `openid_connect`).
+- **Naming**: `snake_case.rb` -- name the file after the feature or operation it demonstrates (e.g., `check.rb`, `report_resource.rb`, `list_workspaces.rb`).
+- **Preferred structure**: Use a class with `class << self` wrapping a `run` method. Call `ClassName.run` at the bottom of the file. Older examples use top-level `include` -- do not add new examples in that style.
+
+  ```ruby
+  class FeatureExample
+    class << self
+      include Kessel::Inventory::V1beta2
+
+      def run
+        client = KesselInventoryService::ClientBuilder.new(ENV.fetch('KESSEL_ENDPOINT', nil))
+                                                      .insecure
+                                                      .build
+        # ... demonstrate the feature ...
+      rescue StandardError => e
+        p "Error: #{e}"
+        raise
+      end
+    end
+  end
+
+  FeatureExample.run
+  ```
+
+- **File header**: Every example must start with `#!/usr/bin/env ruby` followed by `# frozen_string_literal: true`.
+- **Environment variables for configuration**: Use `ENV.fetch('VAR_NAME', nil)` for endpoints, credentials, and other runtime config (e.g., `KESSEL_ENDPOINT`, `AUTH_CLIENT_ID`). Never hardcode secrets. Examples load `.env` files via `require 'dotenv/load'`.
+- **ClientBuilder pattern**: Demonstrate the fluent builder -- `.insecure.build` for local dev, `.oauth2_client_authenticated(...).build` for authenticated flows.
+- **Error handling**: Rescue `StandardError`, never `Exception`, in new examples. Re-raise with bare `raise` after printing.
+- **Print output**: Print results to stdout so users can see what the API returns.
+- **Not automated tests**: Examples require a live Kessel server and are not run in CI. Unit tests belong in `spec/`.
+- **Excluded from tooling**: Examples are excluded from RuboCop, specs, and coverage. They have their own `Gemfile` separate from the SDK's root `Gemfile`.
+- **Update the README**: When adding a new example, add it to the examples table in `README.md` (under the `## Examples` section) with its filename and a short description.
+
 ## Common Pitfalls
 
 ### Do not hand-edit generated protobuf files
