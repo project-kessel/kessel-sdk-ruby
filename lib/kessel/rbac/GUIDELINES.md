@@ -69,8 +69,8 @@ All factory methods in `v2_helpers.rb` follow these rules:
 
 ## Error Handling
 
-- All errors from this module are bare `RuntimeError` (via `raise "message"`), not custom exception classes.
-- gRPC errors from `streamed_list_objects` propagate directly -- do not wrap `GRPC::BadStatus`.
+- Local validation and HTTP failures use bare `RuntimeError` (via `raise "message"`) -- not custom exception classes. These cover workspace fetch HTTP errors and unexpected response shapes.
+- gRPC errors from `streamed_list_objects` propagate directly as `GRPC::BadStatus` subclasses -- do not wrap them.
 
 ## RBS Type Signatures
 
