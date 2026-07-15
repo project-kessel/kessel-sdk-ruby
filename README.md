@@ -58,7 +58,6 @@ lib/
 sig/                         # RBS type signatures for hand-written code
 spec/                        # RSpec test suite
 examples/                    # Working examples with dotenv configuration
-docs/                        # Domain-specific guidelines (see Documentation below)
 ```
 
 Files under `lib/kessel/inventory/v*/`, `lib/google/`, and `lib/buf/` are **generated** by `buf generate` and must never be hand-edited. They are automatically regenerated every 6 hours via CI.
@@ -355,16 +354,10 @@ ruby check.rb
 
 ## Documentation
 
-Detailed domain-specific guidelines are maintained in the `docs/` directory:
+For AI-assisted development context, see [AGENTS.md](AGENTS.md). Directory-local `GUIDELINES.md` files provide detailed conventions for specific areas of the codebase:
 
-- **[API Contracts](docs/api-contracts-guidelines.md)** -- Protobuf code generation, module/namespace mapping, ClientBuilder API, request/response patterns, and RBS type signatures
-- **[Integration](docs/integration-guidelines.md)** -- gRPC client construction, authentication flows, RBAC helpers, streaming/pagination, and environment configuration
-- **[Security](docs/security-guidelines.md)** -- Token caching thread safety, gRPC channel security, credential validation, and secrets management
-- **[Performance](docs/performance-guidelines.md)** -- Token caching, gRPC client reuse, bulk vs. individual operations, consistency controls, and streaming pagination
-- **[Error Handling](docs/error-handling-guidelines.md)** -- Custom exception hierarchy, error wrapping conventions, and gRPC error passthrough policy
-- **[Testing](docs/testing-guidelines.md)** -- RSpec configuration, mocking conventions, coverage setup, and CI expectations
-
-For AI-assisted development context, see [AGENTS.md](AGENTS.md).
+- **[lib/kessel/rbac/GUIDELINES.md](lib/kessel/rbac/GUIDELINES.md)** -- RBAC V2 module conventions
+- **[examples/GUIDELINES.md](examples/GUIDELINES.md)** -- Example script conventions
 
 ## Release Instructions
 
@@ -496,7 +489,7 @@ rake release
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-Please review the [domain-specific guidelines](docs/) before contributing. All specs must pass on Ruby 3.3 and 3.4. Fix RuboCop violations before merging, and update RBS type signatures in `sig/kessel/` when modifying hand-written code.
+Please review [AGENTS.md](AGENTS.md) and the directory-local `GUIDELINES.md` files before contributing. All specs must pass on Ruby 3.3 and 3.4. Fix RuboCop violations before merging, and update RBS type signatures in `sig/kessel/` when modifying hand-written code.
 
 ## License
 

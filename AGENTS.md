@@ -6,16 +6,12 @@ This is `kessel-sdk-ruby`, the official Ruby gRPC client SDK for [Project Kessel
 
 The gem is published to RubyGems as `kessel-sdk`. The current version lives in `lib/kessel/version.rb` as `Kessel::Inventory::VERSION`.
 
-## Detailed Guidelines Index
+## Guidelines Index
 
-The `docs/` directory contains domain-specific guidelines. Read these before working in their respective areas:
+Directory-local GUIDELINES.md files contain detailed conventions for specific areas. Read these before working in the corresponding directories:
 
-- **[docs/security-guidelines.md](docs/security-guidelines.md)** -- Token caching thread safety, gRPC channel security, credential validation, secrets management, and code generation security review practices.
-- **[docs/performance-guidelines.md](docs/performance-guidelines.md)** -- Token caching patterns, gRPC client reuse, bulk vs. individual operations, consistency controls, streaming pagination, and HTTP client reuse.
-- **[docs/error-handling-guidelines.md](docs/error-handling-guidelines.md)** -- Custom exception hierarchy (`OAuthDependencyError`, `OAuthAuthenticationError`), error wrapping conventions, `RuntimeError` usage in builders and RBAC, and gRPC error passthrough policy.
-- **[docs/api-contracts-guidelines.md](docs/api-contracts-guidelines.md)** -- Protobuf source and code generation workflow, module/namespace mapping, service wiring pattern, `ClientBuilder` fluent API, request/response patterns for V1beta2, and RBS type signature maintenance.
-- **[docs/testing-guidelines.md](docs/testing-guidelines.md)** -- RSpec configuration, mocking conventions for gRPC/HTTP/OIDC, coverage setup, test structure, and CI expectations.
-- **[docs/integration-guidelines.md](docs/integration-guidelines.md)** -- gRPC client construction, authentication flows (gRPC and HTTP), RBAC helper methods, streaming/pagination, environment configuration, and resource reporting.
+- **[lib/kessel/rbac/GUIDELINES.md](lib/kessel/rbac/GUIDELINES.md)** -- RBAC V2 module: file organization, factory helper conventions, HTTP workspace operations, gRPC workspace listing, error handling, RBS signatures, testing patterns, and adding new operations.
+- **[examples/GUIDELINES.md](examples/GUIDELINES.md)** -- Example scripts: file structure and naming, required vs. preferred style, environment variables, dependencies, ClientBuilder usage, Rakefile tasks, and the checklist for adding new examples.
 
 ## Architecture
 
@@ -27,7 +23,7 @@ The SDK has a clear three-layer architecture:
 
 2. **Core hand-written layer** (`lib/kessel/auth.rb`, `lib/kessel/grpc.rb`, `lib/kessel/inventory.rb`, `lib/kessel/version.rb`) -- Authentication, gRPC credential wiring, and the `ClientBuilder` base class. These files are subject to RuboCop and have corresponding RBS type signatures in `sig/kessel/`.
 
-3. **Convenience layer** (`lib/kessel/rbac/v2.rb`, `v2_helpers.rb`, `v2_http.rb`) -- Higher-level helpers built on top of V1beta2 protobuf types for RBAC workspace operations. Uses both gRPC (via `streamed_list_objects`) and HTTP (via `Net::HTTP` for workspace fetches).
+3. **Convenience layer** (`lib/kessel/rbac/v2.rb`, `v2_helpers.rb`, `v2_http.rb`) -- Higher-level helpers built on top of V1beta2 protobuf types for RBAC workspace operations. Uses both gRPC (via `streamed_list_objects`) and HTTP (via `Net::HTTP` for workspace fetches). See `lib/kessel/rbac/GUIDELINES.md` for detailed conventions.
 
 ### Module Namespace Map
 
@@ -67,6 +63,37 @@ The `include Kessel::Inventory` at the top level is required for `client_builder
 
 Protobuf package `kessel.inventory.v1beta2` maps to Ruby module `Kessel::Inventory::V1beta2` -- note lowercase `beta` (not `V1Beta2`). This follows the protobuf-to-Ruby naming convention from `buf generate`.
 
+### Authentication Architecture
+
+Authentication is implemented in `lib/kessel/auth.rb` using the `openid_connect` gem as an optional dependency. There are two auth paths depending on protocol:
+
+- **gRPC path**: `Kessel::GRPC#oauth2_call_credentials(auth)` wraps an `OAuth2ClientCredentials` instance as `GRPC::Core::CallCredentials`. The proc is invoked on every RPC call, hitting the token cache fast path when the token is valid. Do not add blocking operations inside this proc.
+- **HTTP path**: `Kessel::Auth#oauth2_auth_request(oauth)` returns an `OAuth2AuthRequest` implementing the `AuthRequest` interface. The `configure_request(request)` method sets the `authorization` header on `Net::HTTPRequest` objects.
+
+The `AuthRequest` module defines an interface contract -- any class including it must implement `configure_request` or callers get `NotImplementedError`. New auth mechanisms must implement this interface and have matching RBS signatures in `sig/kessel/auth.rbs`.
+
+Token caching in `OAuth2ClientCredentials` uses double-checked locking with a `@generation` counter to coalesce concurrent refresh requests (including `force_refresh: true`) into a single SSO call. The generation snapshot taken before acquiring `@token_mutex` lets waiters detect that another thread already refreshed. Cached tokens are frozen with `.freeze` -- any new cacheable response types must also be frozen for concurrent read safety. Use `force_refresh: true` only after receiving an explicit 401/UNAUTHENTICATED error, never preemptively.
+
+### V1beta2 API Patterns
+
+**Check operations** use a triplet: `object` (ResourceReference), `relation` (string), `subject` (SubjectReference). `CheckSelf` omits the subject (inferred from auth context). `CheckForUpdate` provides strongly consistent checks -- use only pre-mutation; use regular `check` for read-path authorization.
+
+**Bulk operations** (`CheckBulk`, `CheckForUpdateBulk`) accept 1--1000 items per RPC. Responses use a `pairs` field with either `item` (success) or `error` (google.rpc.Status). Prefer bulk over looping individual calls to amortize connection overhead.
+
+**Resource reporting** uses `ReportResourceRequest` with `type`, `reporter_type`, `reporter_instance_id`, `representations`, and `write_visibility`. Convert Ruby hashes to protobuf `Struct` via `Google::Protobuf::Struct.decode_json(hash.to_json)`.
+
+**Consistency controls**: The `Consistency` message supports `minimize_latency` (default, may be stale), `at_least_as_fresh` (token from prior write), and `at_least_as_acknowledged` (waits for all acknowledged writes). `WriteVisibility` on report requests defaults to `WRITE_VISIBILITY_UNSPECIFIED`; set `IMMEDIATE` only when the caller will immediately `Check` the newly reported resource.
+
+**Streaming RPCs** (`StreamedListObjects`, `StreamedListSubjects`) use server-side streaming with `RequestPagination` (limit + continuation_token). Iterate with `.each` for constant memory.
+
+**Allowed enum**: V1beta2 uses a shared top-level `Allowed` enum (`ALLOWED_TRUE`, `ALLOWED_FALSE`). V1beta1 uses per-response nested enums (`CheckResponse::Allowed`).
+
+**HTTP API routes**:
+- V1: `/api/kessel/v1/{method}`
+- V1beta1: `/api/inventory/v1beta1/{domain}/{method}`
+- V1beta2: `/api/kessel/v1beta2/{method}`
+- RBAC V2 REST: `/api/rbac/v2/workspaces/`
+
 ## Cross-Cutting Conventions
 
 ### File Headers
@@ -89,29 +116,43 @@ Hand-written RBS files in `sig/kessel/` cover only the hand-written code. When m
 
 ### Builder Pattern
 
-The `ClientBuilder` uses a fluent API where authentication methods (`insecure`, `authenticated`, `unauthenticated`, `oauth2_client_authenticated`) return `self` and must be followed by `.build`. Each method calls `validate_credentials` immediately, so invalid configurations fail at configuration time, not at request time.
+The `ClientBuilder` uses a fluent API where authentication methods (`insecure`, `authenticated`, `unauthenticated`, `oauth2_client_authenticated`) return `self` and must be followed by `.build`. Each method calls `validate_credentials` immediately, so invalid configurations fail at configuration time, not at request time. When no channel credentials are explicitly provided, `build` defaults to `GRPC::Core::ChannelCredentials.new` (TLS) -- this secure-by-default behavior must be preserved.
 
 `client_builder_for_stub` creates a new `Class` dynamically via `Class.new(ClientBuilder)`. The SDK caches these as constants (e.g., `KesselInventoryService::ClientBuilder`). Do not call `client_builder_for_stub` repeatedly at runtime.
 
 ### Error Conventions
 
-- Custom exceptions live under `Kessel::Auth` and inherit from `StandardError`.
+- Custom exceptions live under `Kessel::Auth` and inherit from `StandardError`. There are exactly two: `OAuthDependencyError` (missing `openid_connect` gem) and `OAuthAuthenticationError` (token acquisition or OIDC discovery failure).
 - `ClientBuilder` and `RBAC::V2` use bare `raise "message"` (`RuntimeError`) for validation errors.
 - gRPC errors (`GRPC::BadStatus` subclasses) are never wrapped -- they propagate directly to callers.
 - Rescue `StandardError`, never `Exception`, in new code. Re-raise after logging with bare `raise`.
 
-### Example File Conventions
+**Error wrapping convention**: When translating errors at domain boundaries, rescue `StandardError`, raise the appropriate custom exception with a human-readable prefix describing the failed operation, and append the original `e.message`:
 
-- Examples live in `examples/` with their own `Gemfile` (includes `dotenv` and `openid_connect`). They are excluded from RuboCop, specs, and coverage.
-- Newer examples (preferred pattern) use a class with `class << self` and `rescue StandardError => e` with bare `raise`. Older examples use top-level `include` and `rescue Exception => e`. Do not add new examples in the older style.
-- Use `ENV.fetch('VAR_NAME', nil)` for environment variable access, not `ENV['VAR_NAME']`. Examples load `.env` files via `require 'dotenv/load'`.
-- Every example must start with `#!/usr/bin/env ruby` followed by `# frozen_string_literal: true`.
-- Name files in `snake_case.rb` after the feature or operation (e.g., `check.rb`, `report_resource.rb`, `list_workspaces.rb`).
-- Demonstrate the fluent `ClientBuilder` -- `.insecure.build` for local dev, `.oauth2_client_authenticated(...).build` for authenticated flows.
-- Print results to stdout so users can see what the API returns. Examples require a live Kessel server and are not run in CI; unit tests belong in `spec/`.
-- When adding a new example, add it to the examples table in `README.md` (under the `## Examples` section) with its filename and a short description.
+```ruby
+rescue StandardError => e
+  raise OAuthAuthenticationError, "Failed to obtain client credentials token: #{e.message}"
+end
+```
 
-#### When to add or update examples
+**Dependency checking pattern**: Optional gem dependencies are validated at the point of use via `check_dependencies!`, called in the constructor so failures surface at initialization. Rescue `LoadError` specifically and raise `OAuthDependencyError` with a message naming the missing gem.
+
+**Silent failure in `token_valid?`**: This method rescues all `StandardError` and returns `false` -- a corrupted cached token triggers a refresh instead of crashing. This is the only place in the SDK where errors are silently swallowed. Do not replicate this pattern elsewhere without explicit justification.
+
+**Thread safety in error paths**: The rescue block in `get_token` is inside `@token_mutex.synchronize`, ensuring only one thread attempts refresh at a time and the mutex is released on failure. Do not move the rescue outside the synchronize block.
+
+| Layer | Exception Type | When |
+|-------|---------------|------|
+| `Auth` (dependency) | `OAuthDependencyError` | `openid_connect` gem missing |
+| `Auth` (runtime) | `OAuthAuthenticationError` | Token acquisition or OIDC discovery fails |
+| `Auth` (interface) | `NotImplementedError` | `AuthRequest#configure_request` not implemented |
+| `ClientBuilder` | `RuntimeError` | Invalid target or credential configuration |
+| `RBAC::V2` | `RuntimeError` | HTTP errors, unexpected response data, client mismatch |
+| gRPC calls | `GRPC::BadStatus` subclasses | Server errors, network failures (not wrapped) |
+
+### Maintaining Examples
+
+See `examples/GUIDELINES.md` for file structure, naming, required style, environment variables, and the full checklist for adding new examples.
 
 When adding or changing public API surface, create or update corresponding example scripts:
 
@@ -120,33 +161,51 @@ When adding or changing public API surface, create or update corresponding examp
 - **New authentication or connection pattern**: Add an example showing the new pattern end-to-end.
 - **Deprecated API replaced**: Update examples to use the replacement; remove references to the deprecated path.
 
-#### Preferred example structure
+When adding a new example, also add it to the examples table in `README.md` (under `## Examples`).
 
-```ruby
-#!/usr/bin/env ruby
-# frozen_string_literal: true
+## Testing
 
-require 'dotenv/load'
-require 'kessel-sdk'
+### Framework and Configuration
 
-class FeatureExample
-  class << self
-    include Kessel::Inventory::V1beta2
+- **Test framework**: RSpec `~> 3.12` with `rspec-mocks` and `rspec-expectations`. Coverage via SimpleCov (activated with `COVERAGE=true`).
+- **RSpec config**: `verify_partial_doubles` is enabled -- all mocked methods are verified against the real interface. Specs run in random order. The `grpc` gem is filtered from backtraces. The slowest 10 examples are profiled on every run.
+- **Run tests**: `bundle exec rspec` (or `rake spec`). Default `rake` runs both `spec` and `rubocop`.
 
-    def run
-      client = KesselInventoryService::ClientBuilder.new(ENV.fetch('KESSEL_ENDPOINT', nil))
-                                                    .insecure
-                                                    .build
-      # ... demonstrate the feature ...
-    rescue StandardError => e
-      p "Error: #{e}"
-      raise
-    end
-  end
-end
+### File Structure
 
-FeatureExample.run
-```
+Specs live under `spec/` mirroring the `lib/kessel/` structure:
+- `spec/kessel_spec.rb` -- top-level SDK structure and module loading
+- `spec/kessel/auth_spec.rb` -- authentication classes
+- `spec/kessel/inventory_spec.rb` -- inventory client builder
+- `spec/kessel/rbac/v2_spec.rb` -- RBAC V2 helpers and HTTP calls
+
+Each spec file starts with `# frozen_string_literal: true` and `require 'spec_helper'`. The helper loads the entire SDK via `require_relative '../lib/kessel-sdk'`.
+
+### Mocking Conventions
+
+All external I/O is mocked -- no real gRPC or HTTP calls in tests.
+
+**gRPC stubs and credentials**: Mock `GRPC::Core::ChannelCredentials`, `GRPC::Core::CallCredentials`, and service stub classes using `double` and `allow`.
+
+**Optional gem dependencies**: Use `stub_const` to define modules that may not be installed (e.g., `OpenIDConnect`). Stub `require` to control `LoadError` paths.
+
+**HTTP calls**: Mock `Net::HTTP`, `Net::HTTP::Get`, `URI`, and response objects. Build the full mock chain for request/response.
+
+### Test Patterns
+
+- Use `RSpec.describe <Module>` at the top, `describe '#method_name'` for instance methods, `context 'when ...'` for conditional branches.
+- When testing a Ruby module's methods, `include` the module in the test context rather than instantiating a class.
+- Use `obj.send(:method_name)` to test private methods.
+- Use `instance_variable_get`/`instance_variable_set` for asserting or setting up internal state.
+- Assert builder methods return `self` for chaining.
+- Use `raise_error` with both exception class and message regex for error paths.
+- Use `let` (lazy, not `let!`) for all test fixtures and doubles.
+
+### What Not to Test
+
+- Do not test generated protobuf files directly -- only verify they load without error.
+- Do not add integration tests with real gRPC or HTTP calls.
+- Example files are excluded from specs and coverage.
 
 ## Common Pitfalls
 
@@ -189,7 +248,7 @@ Both run with `continue-on-error: true` in the CI workflow. Fix violations even 
 ## CI/CD
 
 - **CI workflow** (`.github/workflows/ci.yml`): Runs on push/PR to `main`. Tests Ruby 3.3 and 3.4 on ubuntu-latest. Steps: `bundle install`, `rspec`, `rubocop --parallel` (non-blocking), `bundle-audit` (non-blocking). Also builds and installs the gem.
-- **buf-generate workflow** (`.github/workflows/buf-generate.yml`): Runs every 6 hours and on manual dispatch. Regenerates protobuf code and auto-creates a PR on `buf-generate-update` branch.
+- **buf-generate workflow** (`.github/workflows/buf-generate.yml`): Runs every 6 hours and on manual dispatch. Regenerates protobuf code and auto-creates a PR on `buf-generate-update` branch. Review these PRs for unexpected schema changes that could affect authorization semantics.
 - **Dependabot** (`.github/dependabot.yml`): Daily checks for both `bundler` and `github-actions` ecosystems.
 
 ## PR Expectations
