@@ -59,14 +59,15 @@ RSpec.describe Kessel::RBAC::V2 do
   describe '#fetch_default_workspace' do
     before do
       allow(self).to receive(:fetch_workspace)
-        .with(rbac_base_endpoint, org_id, 'default', auth: mock_auth, http_client: nil)
+        .with(rbac_base_endpoint, org_id, 'default', auth: mock_auth, http_client: nil, with_ancestry: true)
         .and_return(Kessel::RBAC::V2::Workspace.new(id: 'default-123', name: 'Default', type: 'default',
                                                     description: 'Default workspace'))
     end
 
-    it 'calls fetch_workspace with default type' do
+    it 'calls fetch_workspace with default type and with_ancestry true' do
       expect(self).to receive(:fetch_workspace).with(rbac_base_endpoint, org_id, 'default', auth: mock_auth,
-                                                                                            http_client: nil)
+                                                                                            http_client: nil,
+                                                                                            with_ancestry: true)
 
       fetch_default_workspace(rbac_base_endpoint, org_id, auth: mock_auth)
     end
@@ -77,19 +78,33 @@ RSpec.describe Kessel::RBAC::V2 do
       expect(result).to be_a(Kessel::RBAC::V2::Workspace)
       expect(result.type).to eq('default')
     end
+
+    it 'passes with_ancestry false when disabled' do
+      allow(self).to receive(:fetch_workspace)
+        .with(rbac_base_endpoint, org_id, 'default', auth: mock_auth, http_client: nil, with_ancestry: false)
+        .and_return(Kessel::RBAC::V2::Workspace.new(id: 'default-123', name: 'Default', type: 'default',
+                                                    description: 'Default workspace'))
+
+      expect(self).to receive(:fetch_workspace).with(rbac_base_endpoint, org_id, 'default', auth: mock_auth,
+                                                                                            http_client: nil,
+                                                                                            with_ancestry: false)
+
+      fetch_default_workspace(rbac_base_endpoint, org_id, auth: mock_auth, with_ancestry: false)
+    end
   end
 
   describe '#fetch_root_workspace' do
     before do
       allow(self).to receive(:fetch_workspace)
-        .with(rbac_base_endpoint, org_id, 'root', auth: mock_auth, http_client: nil)
+        .with(rbac_base_endpoint, org_id, 'root', auth: mock_auth, http_client: nil, with_ancestry: true)
         .and_return(Kessel::RBAC::V2::Workspace.new(id: 'root-123', name: 'Root', type: 'root',
                                                     description: 'Root workspace'))
     end
 
-    it 'calls fetch_workspace with root type' do
+    it 'calls fetch_workspace with root type and with_ancestry true' do
       expect(self).to receive(:fetch_workspace).with(rbac_base_endpoint, org_id, 'root', auth: mock_auth,
-                                                                                         http_client: nil)
+                                                                                         http_client: nil,
+                                                                                         with_ancestry: true)
 
       fetch_root_workspace(rbac_base_endpoint, org_id, auth: mock_auth)
     end
@@ -99,6 +114,19 @@ RSpec.describe Kessel::RBAC::V2 do
 
       expect(result).to be_a(Kessel::RBAC::V2::Workspace)
       expect(result.type).to eq('root')
+    end
+
+    it 'passes with_ancestry false when disabled' do
+      allow(self).to receive(:fetch_workspace)
+        .with(rbac_base_endpoint, org_id, 'root', auth: mock_auth, http_client: nil, with_ancestry: false)
+        .and_return(Kessel::RBAC::V2::Workspace.new(id: 'root-123', name: 'Root', type: 'root',
+                                                    description: 'Root workspace'))
+
+      expect(self).to receive(:fetch_workspace).with(rbac_base_endpoint, org_id, 'root', auth: mock_auth,
+                                                                                         http_client: nil,
+                                                                                         with_ancestry: false)
+
+      fetch_root_workspace(rbac_base_endpoint, org_id, auth: mock_auth, with_ancestry: false)
     end
   end
 
@@ -140,11 +168,19 @@ RSpec.describe Kessel::RBAC::V2 do
         fetch_workspace('http://localhost:8888/', org_id, 'default', auth: mock_auth)
       end
 
-      it 'sets query parameters correctly' do
+      it 'sets query parameters with with_ancestry by default' do
+        expect(URI).to receive(:encode_www_form).with({ type: 'default', with_ancestry: 'true' })
+                                                .and_return('type=default&with_ancestry=true')
+        expect(mock_uri).to receive(:query=).with('type=default&with_ancestry=true')
+
+        fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: mock_auth)
+      end
+
+      it 'omits with_ancestry when set to false' do
         expect(URI).to receive(:encode_www_form).with({ type: 'default' }).and_return('type=default')
         expect(mock_uri).to receive(:query=).with('type=default')
 
-        fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: mock_auth)
+        fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: mock_auth, with_ancestry: false)
       end
     end
 
