@@ -17,6 +17,15 @@ task :check_bulk do
   ruby 'check_bulk.rb'
 end
 
+desc 'run check_for_update_bulk sample'
+task :check_for_update_bulk do
+  ruby 'check_for_update_bulk.rb'
+end
+
+desc 'run console_principal sample'
+task :console_principal do
+  ruby 'console_principal.rb'
+end
 
 desc 'run delete_resource sample'
 task :delete_resource do
