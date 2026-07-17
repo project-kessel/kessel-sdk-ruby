@@ -14,12 +14,14 @@ module Kessel
       DEFAULT_PAGE_LIMIT = 1000
       Workspace = Struct.new(:id, :name, :type, :description)
 
-      def fetch_default_workspace(rbac_base_endpoint, org_id, auth: nil, http_client: nil)
-        fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: auth, http_client: http_client)
+      def fetch_default_workspace(rbac_base_endpoint, org_id, auth: nil, http_client: nil, with_ancestry: true)
+        fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: auth, http_client: http_client,
+                                                               with_ancestry: with_ancestry)
       end
 
-      def fetch_root_workspace(rbac_base_endpoint, org_id, auth: nil, http_client: nil)
-        fetch_workspace(rbac_base_endpoint, org_id, 'root', auth: auth, http_client: http_client)
+      def fetch_root_workspace(rbac_base_endpoint, org_id, auth: nil, http_client: nil, with_ancestry: true)
+        fetch_workspace(rbac_base_endpoint, org_id, 'root', auth: auth, http_client: http_client,
+                                                            with_ancestry: with_ancestry)
       end
 
       # Lists all workspaces that a subject has a specific relation to.
@@ -100,12 +102,12 @@ module Kessel
         )
       end
 
-      def fetch_workspace(rbac_base_endpoint, org_id, workspace_type, auth: nil, http_client: nil)
+      def fetch_workspace(rbac_base_endpoint, org_id, workspace_type, auth: nil, http_client: nil,
+                          with_ancestry: true)
         rbac_base_endpoint = rbac_base_endpoint.delete_suffix('/')
         uri = URI(rbac_base_endpoint + WORKSPACE_ENDPOINT)
-        query = {
-          type: workspace_type
-        }
+        query = { type: workspace_type }
+        query[:with_ancestry] = 'true' if with_ancestry
         uri.query = URI.encode_www_form(query)
         if http_client.nil?
           http_client = Net::HTTP.new(uri.host, uri.port)

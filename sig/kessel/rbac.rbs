@@ -12,10 +12,10 @@ module Kessel
       end
 
       # Fetches the default workspace for an organization
-      def fetch_default_workspace: (String rbac_base_endpoint, String org_id, ?auth: Kessel::Auth::AuthRequest?, ?http_client: Net::HTTP?) -> Workspace
+      def fetch_default_workspace: (String rbac_base_endpoint, String org_id, ?auth: Kessel::Auth::AuthRequest?, ?http_client: Net::HTTP?, ?with_ancestry: bool) -> Workspace
 
       # Fetches the root workspace for an organization
-      def fetch_root_workspace: (String rbac_base_endpoint, String org_id, ?auth: Kessel::Auth::AuthRequest?, ?http_client: Net::HTTP?) -> Workspace
+      def fetch_root_workspace: (String rbac_base_endpoint, String org_id, ?auth: Kessel::Auth::AuthRequest?, ?http_client: Net::HTTP?, ?with_ancestry: bool) -> Workspace
 
       # Creates a workspace representation type
       def workspace_type: () -> Kessel::Inventory::V1beta2::RepresentationType
