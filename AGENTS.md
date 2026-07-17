@@ -10,6 +10,7 @@ The gem is published to RubyGems as `kessel-sdk`. The current version lives in `
 
 Directory-local GUIDELINES.md files contain detailed conventions for specific areas. Read these before working in the corresponding directories:
 
+- **[lib/kessel/inventory/GUIDELINES.md](lib/kessel/inventory/GUIDELINES.md)** -- Inventory module: ClientBuilder fluent API, service wiring pattern, version conventions, V1beta2 API patterns (check/bulk/streaming/consistency), authentication integration, console helper, and adding new services.
 - **[lib/kessel/rbac/GUIDELINES.md](lib/kessel/rbac/GUIDELINES.md)** -- RBAC V2 module: file organization, factory helper conventions, HTTP workspace operations, gRPC workspace listing, error handling, RBS signatures, testing patterns, and adding new operations.
 - **[examples/GUIDELINES.md](examples/GUIDELINES.md)** -- Example scripts: file structure and naming, required vs. preferred style, environment variables, dependencies, ClientBuilder usage, Rakefile tasks, and the checklist for adding new examples.
 
@@ -39,60 +40,17 @@ Kessel::RBAC::V2           -- Workspace helpers, principal/role/subject factorie
 
 New SDK features should target `V1beta2` unless explicitly working with legacy services.
 
-### Service Wiring Pattern
+### Service Wiring and Version Conventions
 
-Every gRPC service module must follow this exact pattern to be properly wired:
-
-```ruby
-# lib/kessel/inventory/v1betaN.rb
-require 'kessel/inventory'
-require 'kessel/inventory/v1betaN/some_service_services_pb'
-
-include Kessel::Inventory
-
-module Kessel::Inventory::V1betaN
-  module KesselSomeService
-    ClientBuilder = ::Kessel::Inventory.client_builder_for_stub(Stub)
-  end
-end
-```
-
-The `include Kessel::Inventory` at the top level is required for `client_builder_for_stub` to resolve. The `Stub` constant comes from the generated `*_services_pb.rb`. When adding a new service, also add the `ClientBuilder` constant declaration in `sig/kessel/inventory.rbs`.
-
-### Version Naming Convention
-
-Protobuf package `kessel.inventory.v1beta2` maps to Ruby module `Kessel::Inventory::V1beta2` -- note lowercase `beta` (not `V1Beta2`). This follows the protobuf-to-Ruby naming convention from `buf generate`.
+See `lib/kessel/inventory/GUIDELINES.md` for the required service wiring pattern, version naming conventions (note: lowercase `beta` in `V1beta2`), and how to add new service versions.
 
 ### Authentication Architecture
 
-Authentication is implemented in `lib/kessel/auth.rb` using the `openid_connect` gem as an optional dependency. There are two auth paths depending on protocol:
-
-- **gRPC path**: `Kessel::GRPC#oauth2_call_credentials(auth)` wraps an `OAuth2ClientCredentials` instance as `GRPC::Core::CallCredentials`. The proc is invoked on every RPC call, hitting the token cache fast path when the token is valid. Do not add blocking operations inside this proc.
-- **HTTP path**: `Kessel::Auth#oauth2_auth_request(oauth)` returns an `OAuth2AuthRequest` implementing the `AuthRequest` interface. The `configure_request(request)` method sets the `authorization` header on `Net::HTTPRequest` objects.
-
-The `AuthRequest` module defines an interface contract -- any class including it must implement `configure_request` or callers get `NotImplementedError`. New auth mechanisms must implement this interface and have matching RBS signatures in `sig/kessel/auth.rbs`.
-
-Token caching in `OAuth2ClientCredentials` uses double-checked locking with a `@generation` counter to coalesce concurrent refresh requests (including `force_refresh: true`) into a single SSO call. The generation snapshot taken before acquiring `@token_mutex` lets waiters detect that another thread already refreshed. Cached tokens are frozen with `.freeze` -- any new cacheable response types must also be frozen for concurrent read safety. Use `force_refresh: true` only after receiving an explicit 401/UNAUTHENTICATED error, never preemptively.
+Authentication is implemented in `lib/kessel/auth.rb` using the `openid_connect` gem as an optional dependency. See `lib/kessel/inventory/GUIDELINES.md` for how auth integrates with the ClientBuilder (gRPC and HTTP paths, token caching, and the `AuthRequest` interface contract).
 
 ### V1beta2 API Patterns
 
-**Check operations** use a triplet: `object` (ResourceReference), `relation` (string), `subject` (SubjectReference). `CheckSelf` omits the subject (inferred from auth context). `CheckForUpdate` provides strongly consistent checks -- use only pre-mutation; use regular `check` for read-path authorization.
-
-**Bulk operations** (`CheckBulk`, `CheckForUpdateBulk`) accept 1--1000 items per RPC. Responses use a `pairs` field with either `item` (success) or `error` (google.rpc.Status). Prefer bulk over looping individual calls to amortize connection overhead.
-
-**Resource reporting** uses `ReportResourceRequest` with `type`, `reporter_type`, `reporter_instance_id`, `representations`, and `write_visibility`. Convert Ruby hashes to protobuf `Struct` via `Google::Protobuf::Struct.decode_json(hash.to_json)`.
-
-**Consistency controls**: The `Consistency` message supports `minimize_latency` (default, may be stale), `at_least_as_fresh` (token from prior write), and `at_least_as_acknowledged` (waits for all acknowledged writes). `WriteVisibility` on report requests defaults to `WRITE_VISIBILITY_UNSPECIFIED`; set `IMMEDIATE` only when the caller will immediately `Check` the newly reported resource.
-
-**Streaming RPCs** (`StreamedListObjects`, `StreamedListSubjects`) use server-side streaming with `RequestPagination` (limit + continuation_token). Iterate with `.each` for constant memory.
-
-**Allowed enum**: V1beta2 uses a shared top-level `Allowed` enum (`ALLOWED_TRUE`, `ALLOWED_FALSE`). V1beta1 uses per-response nested enums (`CheckResponse::Allowed`).
-
-**HTTP API routes**:
-- V1: `/api/kessel/v1/{method}`
-- V1beta1: `/api/inventory/v1beta1/{domain}/{method}`
-- V1beta2: `/api/kessel/v1beta2/{method}`
-- RBAC V2 REST: `/api/rbac/v2/workspaces/`
+See `lib/kessel/inventory/GUIDELINES.md` for detailed V1beta2 API conventions: check operations (Check vs CheckForUpdate), bulk per-item error handling, resource reporting, consistency controls, streaming RPCs, the Allowed enum, and HTTP API routes.
 
 ## Cross-Cutting Conventions
 
@@ -116,9 +74,7 @@ Hand-written RBS files in `sig/kessel/` cover only the hand-written code. When m
 
 ### Builder Pattern
 
-The `ClientBuilder` uses a fluent API where authentication methods (`insecure`, `authenticated`, `unauthenticated`, `oauth2_client_authenticated`) return `self` and must be followed by `.build`. Each method calls `validate_credentials` immediately, so invalid configurations fail at configuration time, not at request time. When no channel credentials are explicitly provided, `build` defaults to `GRPC::Core::ChannelCredentials.new` (TLS) -- this secure-by-default behavior must be preserved.
-
-`client_builder_for_stub` creates a new `Class` dynamically via `Class.new(ClientBuilder)`. The SDK caches these as constants (e.g., `KesselInventoryService::ClientBuilder`). Do not call `client_builder_for_stub` repeatedly at runtime.
+See `lib/kessel/inventory/GUIDELINES.md` for full ClientBuilder conventions: fluent API, credential defaults, validation behavior, and the `client_builder_for_stub` factory.
 
 ### Error Conventions
 
