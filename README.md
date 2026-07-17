@@ -356,6 +356,7 @@ ruby check.rb
 
 For AI-assisted development context, see [AGENTS.md](AGENTS.md). Directory-local `GUIDELINES.md` files provide detailed conventions for specific areas of the codebase:
 
+- **[lib/kessel/inventory/GUIDELINES.md](lib/kessel/inventory/GUIDELINES.md)** -- Inventory module: ClientBuilder, service wiring, V1beta2 API patterns, auth integration
 - **[lib/kessel/rbac/GUIDELINES.md](lib/kessel/rbac/GUIDELINES.md)** -- RBAC V2 module conventions
 - **[examples/GUIDELINES.md](examples/GUIDELINES.md)** -- Example script conventions
 
