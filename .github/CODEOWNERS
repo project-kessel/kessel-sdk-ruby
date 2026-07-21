@@ -1,0 +1,8 @@
+# Default owners for everything in the repo
+* @project-kessel/resources-relations-team
+
+# All GitHub configuration requires review from core maintainers
+.github/** @project-kessel/resources-relations-team
+
+# CODEOWNERS self-protection — must come AFTER the wildcard (last match wins)
+.github/CODEOWNERS @project-kessel/resources-relations-team
