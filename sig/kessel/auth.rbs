@@ -9,6 +9,7 @@ module Kessel
       DEFAULT_MAX_DELAY: Float
       RETRYABLE_NETWORK_ERRORS: Array[Class]
       RETRYABLE_HTTP_STATUSES: Array[Integer]
+      RETRYABLE_NETWORK_MESSAGE_PATTERNS: Array[Regexp]
 
       def with_retry: (?max_retries: Integer, ?base_delay: Float, ?max_delay: Float) { () -> untyped } -> untyped
 
@@ -20,6 +21,9 @@ module Kessel
       def backoff_delay_for_http_error: (StandardError error, Integer attempt, Float base_delay, Float max_delay) -> Float
       def extract_retry_after: (StandardError error) -> Float?
       def parse_retry_after_date: (String header) -> Float?
+      def retryable_cause?: (StandardError error, ?max_depth: Integer) -> bool
+      def retryable_network_error?: (StandardError error) -> bool
+      def retryable_network_message?: (StandardError error) -> bool
     end
 
     # Exception raised when OAuth functionality is requested but dependencies are missing

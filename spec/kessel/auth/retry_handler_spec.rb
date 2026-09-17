@@ -9,7 +9,8 @@ RSpec.describe Kessel::Auth::RetryHandler do
 
       # Expose private methods for testing
       public :backoff_delay, :retryable_http_error?, :extract_http_status,
-             :backoff_delay_for_http_error, :extract_retry_after, :parse_retry_after_date
+             :backoff_delay_for_http_error, :extract_retry_after, :parse_retry_after_date,
+             :retryable_cause?, :retryable_network_error?, :retryable_network_message?
     end
   end
 
@@ -294,6 +295,169 @@ RSpec.describe Kessel::Auth::RetryHandler do
         expect(handler).to have_received(:sleep).exactly(2).times
       end
     end
+
+    context 'when a wrapper exception preserves a retryable cause' do
+      it 'retries when cause is Errno::ECONNRESET' do
+        attempt = 0
+        result = handler.with_retry do
+          attempt += 1
+          if attempt == 1
+            begin
+              raise Errno::ECONNRESET
+            rescue StandardError
+              raise StandardError, 'DiscoveryFailed: Connection reset by peer'
+            end
+          end
+          'recovered'
+        end
+
+        expect(result).to eq('recovered')
+        expect(handler).to have_received(:sleep).once
+      end
+
+      it 'retries when cause is Errno::ECONNREFUSED' do
+        attempt = 0
+        result = handler.with_retry do
+          attempt += 1
+          if attempt == 1
+            begin
+              raise Errno::ECONNREFUSED
+            rescue StandardError
+              raise StandardError, 'DiscoveryFailed'
+            end
+          end
+          'recovered'
+        end
+
+        expect(result).to eq('recovered')
+        expect(handler).to have_received(:sleep).once
+      end
+
+      it 'retries when cause is Net::OpenTimeout' do
+        attempt = 0
+        result = handler.with_retry do
+          attempt += 1
+          if attempt == 1
+            begin
+              raise Net::OpenTimeout, 'execution expired'
+            rescue StandardError
+              raise StandardError, 'DiscoveryFailed: execution expired'
+            end
+          end
+          'recovered'
+        end
+
+        expect(result).to eq('recovered')
+        expect(handler).to have_received(:sleep).once
+      end
+
+      it 'retries when cause is a retryable HTTP error' do
+        error_class = Class.new(StandardError) { define_method(:status) { 503 } }
+        attempt = 0
+        result = handler.with_retry do
+          attempt += 1
+          if attempt == 1
+            begin
+              raise error_class, 'Service Unavailable'
+            rescue StandardError
+              raise StandardError, 'DiscoveryFailed: Service Unavailable'
+            end
+          end
+          'recovered'
+        end
+
+        expect(result).to eq('recovered')
+        expect(handler).to have_received(:sleep).once
+      end
+
+      it 'exhausts retries with wrapper exception then raises' do
+        expect do
+          handler.with_retry(max_retries: 2) do
+            begin
+              raise Errno::ECONNRESET
+            rescue StandardError
+              raise StandardError, 'DiscoveryFailed: Connection reset by peer'
+            end
+          end
+        end.to raise_error(StandardError, /DiscoveryFailed/)
+
+        expect(handler).to have_received(:sleep).exactly(2).times
+      end
+    end
+
+    context 'when a wrapper exception message contains network error text' do
+      it 'retries on "connection reset by peer" in message' do
+        attempt = 0
+        result = handler.with_retry do
+          attempt += 1
+          raise StandardError, 'connection reset by peer' if attempt == 1
+
+          'recovered'
+        end
+
+        expect(result).to eq('recovered')
+        expect(handler).to have_received(:sleep).once
+      end
+
+      it 'retries on "connection refused" in message' do
+        attempt = 0
+        result = handler.with_retry do
+          attempt += 1
+          raise StandardError, 'Connection refused - connect(2)' if attempt == 1
+
+          'recovered'
+        end
+
+        expect(result).to eq('recovered')
+        expect(handler).to have_received(:sleep).once
+      end
+
+      it 'retries on "name or service not known" in message' do
+        attempt = 0
+        result = handler.with_retry do
+          attempt += 1
+          raise StandardError, 'getaddrinfo: Name or service not known' if attempt == 1
+
+          'recovered'
+        end
+
+        expect(result).to eq('recovered')
+        expect(handler).to have_received(:sleep).once
+      end
+
+      it 'retries on "execution expired" in message' do
+        attempt = 0
+        result = handler.with_retry do
+          attempt += 1
+          raise StandardError, 'execution expired' if attempt == 1
+
+          'recovered'
+        end
+
+        expect(result).to eq('recovered')
+        expect(handler).to have_received(:sleep).once
+      end
+
+      it 'does not retry on invalid provider configuration' do
+        expect do
+          handler.with_retry do
+            raise StandardError, 'Invalid issuer: https://bad-url'
+          end
+        end.to raise_error(StandardError, /Invalid issuer/)
+
+        expect(handler).not_to have_received(:sleep)
+      end
+
+      it 'does not retry on 404 wrapped in message' do
+        expect do
+          handler.with_retry do
+            raise StandardError, 'HTTP 404 Not Found'
+          end
+        end.to raise_error(StandardError, /404/)
+
+        expect(handler).not_to have_received(:sleep)
+      end
+    end
   end
 
   describe '#backoff_delay' do
@@ -567,6 +731,193 @@ RSpec.describe Kessel::Auth::RetryHandler do
 
     it 'returns nil for an invalid date string' do
       expect(handler.parse_retry_after_date('not-a-date')).to be_nil
+    end
+  end
+
+  describe '#retryable_cause?' do
+    it 'returns true when cause is a retryable network error' do
+      error = begin
+        raise Errno::ECONNRESET
+      rescue StandardError
+        StandardError.new('wrapper')
+      end
+      # Manually trigger cause chain by re-raising inside rescue
+      wrapper = nil
+      begin
+        begin
+          raise Errno::ECONNRESET
+        rescue StandardError
+          raise StandardError, 'DiscoveryFailed'
+        end
+      rescue StandardError => e
+        wrapper = e
+      end
+
+      expect(handler.retryable_cause?(wrapper)).to be true
+    end
+
+    it 'returns true when cause is a timeout error' do
+      wrapper = nil
+      begin
+        begin
+          raise Net::ReadTimeout, 'Net::ReadTimeout'
+        rescue StandardError
+          raise StandardError, 'DiscoveryFailed: timeout'
+        end
+      rescue StandardError => e
+        wrapper = e
+      end
+
+      expect(handler.retryable_cause?(wrapper)).to be true
+    end
+
+    it 'returns true when cause is a retryable HTTP error' do
+      error_class = Class.new(StandardError) { define_method(:status) { 503 } }
+      wrapper = nil
+      begin
+        begin
+          raise error_class, 'Service Unavailable'
+        rescue StandardError
+          raise StandardError, 'DiscoveryFailed'
+        end
+      rescue StandardError => e
+        wrapper = e
+      end
+
+      expect(handler.retryable_cause?(wrapper)).to be true
+    end
+
+    it 'returns false when cause is a non-retryable error' do
+      wrapper = nil
+      begin
+        begin
+          raise ArgumentError, 'bad argument'
+        rescue StandardError
+          raise StandardError, 'DiscoveryFailed'
+        end
+      rescue StandardError => e
+        wrapper = e
+      end
+
+      expect(handler.retryable_cause?(wrapper)).to be false
+    end
+
+    it 'returns false when there is no cause' do
+      error = StandardError.new('no cause')
+      expect(handler.retryable_cause?(error)).to be false
+    end
+
+    it 'respects max_depth to prevent infinite loops' do
+      # Build a chain deeper than max_depth with non-retryable causes
+      wrapper = nil
+      begin
+        begin
+          begin
+            begin
+              raise ArgumentError, 'deep'
+            rescue StandardError
+              raise StandardError, 'level 3'
+            end
+          rescue StandardError
+            raise StandardError, 'level 2'
+          end
+        rescue StandardError
+          raise StandardError, 'level 1'
+        end
+      rescue StandardError => e
+        wrapper = e
+      end
+
+      expect(handler.retryable_cause?(wrapper, max_depth: 2)).to be false
+    end
+  end
+
+  describe '#retryable_network_error?' do
+    it 'returns true for Errno::ECONNRESET' do
+      error = Errno::ECONNRESET.new
+      expect(handler.retryable_network_error?(error)).to be true
+    end
+
+    it 'returns true for Net::OpenTimeout' do
+      error = Net::OpenTimeout.new('execution expired')
+      expect(handler.retryable_network_error?(error)).to be true
+    end
+
+    it 'returns true for SocketError' do
+      error = SocketError.new('getaddrinfo')
+      expect(handler.retryable_network_error?(error)).to be true
+    end
+
+    it 'returns false for StandardError' do
+      error = StandardError.new('generic')
+      expect(handler.retryable_network_error?(error)).to be false
+    end
+
+    it 'returns false for ArgumentError' do
+      error = ArgumentError.new('bad')
+      expect(handler.retryable_network_error?(error)).to be false
+    end
+  end
+
+  describe '#retryable_network_message?' do
+    it 'returns true for "connection reset by peer"' do
+      error = StandardError.new('connection reset by peer')
+      expect(handler.retryable_network_message?(error)).to be true
+    end
+
+    it 'returns true for "Connection refused"' do
+      error = StandardError.new('Connection refused - connect(2)')
+      expect(handler.retryable_network_message?(error)).to be true
+    end
+
+    it 'returns true for "execution expired"' do
+      error = StandardError.new('execution expired')
+      expect(handler.retryable_network_message?(error)).to be true
+    end
+
+    it 'returns true for "Name or service not known"' do
+      error = StandardError.new('getaddrinfo: Name or service not known')
+      expect(handler.retryable_network_message?(error)).to be true
+    end
+
+    it 'returns true for "network is unreachable"' do
+      error = StandardError.new('Network is unreachable - connect(2)')
+      expect(handler.retryable_network_message?(error)).to be true
+    end
+
+    it 'returns true for "host is unreachable"' do
+      error = StandardError.new('Host is unreachable')
+      expect(handler.retryable_network_message?(error)).to be true
+    end
+
+    it 'returns true for "connection timed out"' do
+      error = StandardError.new('Connection timed out - connect(2)')
+      expect(handler.retryable_network_message?(error)).to be true
+    end
+
+    it 'returns true for "no route to host"' do
+      error = StandardError.new('No route to host - connect(2)')
+      expect(handler.retryable_network_message?(error)).to be true
+    end
+
+    it 'returns true for "end of file reached"' do
+      error = StandardError.new('end of file reached')
+      expect(handler.retryable_network_message?(error)).to be true
+    end
+
+    it 'returns false for generic error messages' do
+      error = StandardError.new('something went wrong')
+      expect(handler.retryable_network_message?(error)).to be false
+    end
+
+    it 'returns false for invalid configuration errors' do
+      error = StandardError.new('Invalid issuer: https://bad-url')
+      expect(handler.retryable_network_message?(error)).to be false
+    end
+
+    it 'returns false for HTTP 401 error messages' do
+      error = StandardError.new('HTTP 401 Unauthorized')
+      expect(handler.retryable_network_message?(error)).to be false
     end
   end
 

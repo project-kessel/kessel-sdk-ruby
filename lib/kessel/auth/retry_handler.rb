@@ -38,6 +38,22 @@ module Kessel
       # HTTP status codes that warrant a retry (429 + all 5xx server errors).
       RETRYABLE_HTTP_STATUSES = ([429] + (500..599).to_a).freeze
 
+      # Message patterns indicating a wrapped network error. Used when wrapper
+      # exceptions (e.g. OpenIDConnect::Discovery::DiscoveryFailed) drop the
+      # original exception class but preserve its message text.
+      RETRYABLE_NETWORK_MESSAGE_PATTERNS = [
+        /connection reset by peer/i,
+        /connection refused/i,
+        /execution expired/i,
+        /name or service not known/i,
+        /getaddrinfo/i,
+        /network is unreachable/i,
+        /host is unreachable/i,
+        /connection timed out/i,
+        /no route to host/i,
+        /end of file reached/i
+      ].freeze
+
       # Executes a block with retry logic using exponential backoff and jitter.
       #
       # Retries on network errors (connection refused, reset, timeout),
@@ -63,7 +79,7 @@ module Kessel
           sleep(backoff_delay(attempt, base_delay, max_delay))
           retry
         rescue StandardError => e
-          raise unless retryable_http_error?(e)
+          raise unless retryable_http_error?(e) || retryable_cause?(e) || retryable_network_message?(e)
 
           attempt += 1
           raise if attempt > max_retries
@@ -183,6 +199,53 @@ module Kessel
         seconds.positive? ? seconds : nil
       rescue ArgumentError
         nil
+      end
+
+      # Checks whether an error wraps a retryable cause in its exception chain.
+      #
+      # Some libraries (e.g. openid_connect's DiscoveryFailed) wrap network
+      # and HTTP errors, dropping the original status and response. This method
+      # walks the cause chain to find the underlying retryable condition.
+      #
+      # @param error [StandardError] The caught exception
+      # @param max_depth [Integer] Maximum cause chain depth to prevent infinite loops
+      # @return [Boolean] true if a retryable cause is found
+      def retryable_cause?(error, max_depth: 5)
+        cause = error.cause
+        depth = 0
+        while cause && depth < max_depth
+          return true if retryable_network_error?(cause)
+          return true if retryable_http_error?(cause)
+
+          cause = cause.cause
+          depth += 1
+        end
+        false
+      end
+
+      # Checks if an error is a retryable network-level error.
+      #
+      # @param error [StandardError] The exception to check
+      # @return [Boolean] true if the error is a known network or timeout error
+      def retryable_network_error?(error)
+        RETRYABLE_NETWORK_ERRORS.any? { |klass| error.is_a?(klass) } ||
+          error.is_a?(Net::OpenTimeout) ||
+          error.is_a?(Net::ReadTimeout) ||
+          error.is_a?(Timeout::Error)
+      end
+
+      # Checks if an error message contains network error text from a wrapper.
+      #
+      # Used when wrapper exceptions drop the original exception class but
+      # preserve its message. Only matches specific network failure patterns
+      # that are always transient. Configuration errors (invalid URLs, missing
+      # fields, auth failures) do not match.
+      #
+      # @param error [StandardError] The caught exception
+      # @return [Boolean] true if the message indicates a wrapped network error
+      def retryable_network_message?(error)
+        msg = error.message
+        RETRYABLE_NETWORK_MESSAGE_PATTERNS.any? { |pattern| msg.match?(pattern) }
       end
     end
   end
