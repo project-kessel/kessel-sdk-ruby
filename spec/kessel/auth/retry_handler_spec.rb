@@ -525,6 +525,30 @@ RSpec.describe Kessel::Auth::RetryHandler do
 
       expect(handler.extract_retry_after(error)).to be_nil
     end
+
+    it 'returns nil for Retry-After: Infinity and falls back to jitter' do
+      response = { 'Retry-After' => 'Infinity' }
+      error_class = Class.new(StandardError) { define_method(:response) { response } }
+      error = error_class.new('rate limited')
+
+      expect(handler.extract_retry_after(error)).to be_nil
+    end
+
+    it 'returns nil for Retry-After: NaN' do
+      response = { 'Retry-After' => 'NaN' }
+      error_class = Class.new(StandardError) { define_method(:response) { response } }
+      error = error_class.new('rate limited')
+
+      expect(handler.extract_retry_after(error)).to be_nil
+    end
+
+    it 'returns nil for Retry-After: -Infinity' do
+      response = { 'Retry-After' => '-Infinity' }
+      error_class = Class.new(StandardError) { define_method(:response) { response } }
+      error = error_class.new('rate limited')
+
+      expect(handler.extract_retry_after(error)).to be_nil
+    end
   end
 
   describe '#parse_retry_after_date' do

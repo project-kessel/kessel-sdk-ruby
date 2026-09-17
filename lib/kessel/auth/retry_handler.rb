@@ -164,7 +164,7 @@ module Kessel
         # Try numeric (delay-seconds) first
         numeric = Float(header, exception: false)
         if numeric
-          return numeric if numeric.positive?
+          return numeric if numeric.finite? && numeric.positive?
 
           return nil
         end
