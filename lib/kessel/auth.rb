@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'grpc'
+require 'kessel/auth/retry_handler'
 require 'kessel/version'
 
 module Kessel
@@ -20,6 +21,8 @@ module Kessel
   # @author Project Kessel
   # @since 1.0.0
   module Auth
+    include RetryHandler
+
     EXPIRATION_WINDOW = 300 # 5 minutes in seconds
     DEFAULT_EXPIRES_IN = 3600 # 1 hour in seconds
 
@@ -54,8 +57,10 @@ module Kessel
 
     def fetch_oidc_discovery(provider_url)
       check_dependencies!
-      discovery = ::OpenIDConnect::Discovery::Provider::Config.discover!(provider_url)
-      OIDCDiscoveryMetadata.new(discovery.token_endpoint)
+      with_retry do
+        discovery = ::OpenIDConnect::Discovery::Provider::Config.discover!(provider_url)
+        OIDCDiscoveryMetadata.new(discovery.token_endpoint)
+      end
     rescue StandardError => e
       raise OAuthAuthenticationError, "Failed to discover OIDC configuration from #{provider_url}: #{e.message}"
     end
@@ -173,11 +178,13 @@ module Kessel
           client_secret: @client_secret
         }
 
-        token_data = client.access_token!(request_params)
-        RefreshTokenResponse.new(
-          access_token: token_data.access_token,
-          expires_at: Time.now + (token_data.expires_in || DEFAULT_EXPIRES_IN)
-        ).freeze
+        with_retry do
+          token_data = client.access_token!(request_params)
+          RefreshTokenResponse.new(
+            access_token: token_data.access_token,
+            expires_at: Time.now + (token_data.expires_in || DEFAULT_EXPIRES_IN)
+          ).freeze
+        end
       end
 
       # Checks if we have a valid cached token.

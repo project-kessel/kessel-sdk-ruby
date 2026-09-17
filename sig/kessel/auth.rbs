@@ -1,5 +1,26 @@
 module Kessel
   module Auth
+    include RetryHandler
+
+    # Retry logic with exponential backoff and jitter for transient HTTP failures
+    module RetryHandler
+      DEFAULT_MAX_RETRIES: Integer
+      DEFAULT_BASE_DELAY: Float
+      DEFAULT_MAX_DELAY: Float
+      RETRYABLE_NETWORK_ERRORS: Array[Class]
+      RETRYABLE_HTTP_STATUSES: Array[Integer]
+
+      def with_retry: (?max_retries: Integer, ?base_delay: Float, ?max_delay: Float) { () -> untyped } -> untyped
+
+      private
+
+      def backoff_delay: (Integer attempt, Float base_delay, Float max_delay) -> Float
+      def retryable_http_error?: (StandardError error) -> bool
+      def extract_http_status: (StandardError error) -> Integer?
+      def backoff_delay_for_http_error: (StandardError error, Integer attempt, Float base_delay, Float max_delay) -> Float
+      def extract_retry_after: (StandardError error) -> Float?
+    end
+
     # Exception raised when OAuth functionality is requested but dependencies are missing
     class OAuthDependencyError < StandardError
       def initialize: (?String message) -> void

@@ -169,6 +169,68 @@ RSpec.describe Kessel::Auth do
                              /Failed to obtain client credentials token.*Token request failed/)
         end
       end
+
+      context 'when token endpoint returns a transient error then succeeds' do
+        it 'retries on connection refused and returns token' do
+          allow(oauth).to receive(:sleep)
+          call_count = 0
+          allow(mock_client).to receive(:access_token!) do
+            call_count += 1
+            raise Errno::ECONNREFUSED if call_count == 1
+
+            mock_token_response
+          end
+
+          result = oauth.get_token
+          expect(result).to be_a(Kessel::Auth::RefreshTokenResponse)
+          expect(result.access_token).to eq('test-token')
+          expect(call_count).to eq(2)
+        end
+
+        it 'retries on HTTP 429 and returns token' do
+          allow(oauth).to receive(:sleep)
+          call_count = 0
+          allow(mock_client).to receive(:access_token!) do
+            call_count += 1
+            raise StandardError, 'HTTP 429 Too Many Requests' if call_count == 1
+
+            mock_token_response
+          end
+
+          result = oauth.get_token
+          expect(result).to be_a(Kessel::Auth::RefreshTokenResponse)
+          expect(result.access_token).to eq('test-token')
+          expect(call_count).to eq(2)
+        end
+
+        it 'retries on HTTP 503 and returns token' do
+          allow(oauth).to receive(:sleep)
+          call_count = 0
+          allow(mock_client).to receive(:access_token!) do
+            call_count += 1
+            raise StandardError, 'HTTP 503 Service Unavailable' if call_count == 1
+
+            mock_token_response
+          end
+
+          result = oauth.get_token
+          expect(result).to be_a(Kessel::Auth::RefreshTokenResponse)
+          expect(result.access_token).to eq('test-token')
+          expect(call_count).to eq(2)
+        end
+      end
+
+      context 'when token endpoint fails persistently' do
+        it 'raises OAuthAuthenticationError after exhausting retries' do
+          allow(oauth).to receive(:sleep)
+          allow(mock_client).to receive(:access_token!).and_raise(Errno::ECONNREFUSED)
+
+          expect do
+            oauth.get_token
+          end.to raise_error(Kessel::Auth::OAuthAuthenticationError,
+                             /Failed to obtain client credentials token/)
+        end
+      end
     end
 
     describe '#refresh' do
@@ -253,6 +315,78 @@ RSpec.describe Kessel::Auth do
         it 'returns false' do
           expect(oauth.send(:token_valid?)).to be false
         end
+      end
+    end
+  end
+
+  describe '#fetch_oidc_discovery retry behavior' do
+    include Kessel::Auth
+
+    let(:mock_discovery) { double('discovery', token_endpoint: 'https://auth.example.com/token') }
+
+    before do
+      stub_const('OpenIDConnect', Module.new)
+      stub_const('OpenIDConnect::Discovery', Module.new)
+      stub_const('OpenIDConnect::Discovery::Provider', Module.new)
+      config_class = Class.new { def self.discover!(_url); end }
+      stub_const('OpenIDConnect::Discovery::Provider::Config', config_class)
+      allow(self).to receive(:require).with('openid_connect').and_return(true)
+      allow(self).to receive(:sleep)
+    end
+
+    context 'when discovery succeeds after transient failure' do
+      it 'retries on connection refused and returns metadata' do
+        call_count = 0
+        allow(OpenIDConnect::Discovery::Provider::Config).to receive(:discover!) do
+          call_count += 1
+          raise Errno::ECONNREFUSED if call_count == 1
+
+          mock_discovery
+        end
+
+        result = fetch_oidc_discovery('https://auth.example.com')
+        expect(result).to be_a(Kessel::Auth::OIDCDiscoveryMetadata)
+        expect(result.token_endpoint).to eq('https://auth.example.com/token')
+        expect(call_count).to eq(2)
+      end
+
+      it 'retries on HTTP 503 and returns metadata' do
+        call_count = 0
+        allow(OpenIDConnect::Discovery::Provider::Config).to receive(:discover!) do
+          call_count += 1
+          raise StandardError, 'HTTP 503 Service Unavailable' if call_count == 1
+
+          mock_discovery
+        end
+
+        result = fetch_oidc_discovery('https://auth.example.com')
+        expect(result).to be_a(Kessel::Auth::OIDCDiscoveryMetadata)
+        expect(call_count).to eq(2)
+      end
+    end
+
+    context 'when discovery fails persistently' do
+      it 'raises OAuthAuthenticationError after exhausting retries' do
+        allow(OpenIDConnect::Discovery::Provider::Config).to receive(:discover!)
+          .and_raise(Errno::ECONNREFUSED)
+
+        expect do
+          fetch_oidc_discovery('https://auth.example.com')
+        end.to raise_error(Kessel::Auth::OAuthAuthenticationError,
+                           /Failed to discover OIDC configuration/)
+      end
+    end
+
+    context 'when discovery fails with non-retryable error' do
+      it 'raises OAuthAuthenticationError immediately' do
+        allow(OpenIDConnect::Discovery::Provider::Config).to receive(:discover!)
+          .and_raise(StandardError, 'Invalid provider URL')
+
+        expect do
+          fetch_oidc_discovery('https://bad.example.com')
+        end.to raise_error(Kessel::Auth::OAuthAuthenticationError,
+                           /Failed to discover OIDC configuration.*Invalid provider URL/)
+        expect(self).not_to have_received(:sleep)
       end
     end
   end
