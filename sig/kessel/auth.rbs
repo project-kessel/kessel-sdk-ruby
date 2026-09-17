@@ -19,6 +19,7 @@ module Kessel
       def extract_http_status: (StandardError error) -> Integer?
       def backoff_delay_for_http_error: (StandardError error, Integer attempt, Float base_delay, Float max_delay) -> Float
       def extract_retry_after: (StandardError error) -> Float?
+      def parse_retry_after_date: (String header) -> Float?
     end
 
     # Exception raised when OAuth functionality is requested but dependencies are missing

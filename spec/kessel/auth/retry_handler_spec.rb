@@ -9,7 +9,7 @@ RSpec.describe Kessel::Auth::RetryHandler do
 
       # Expose private methods for testing
       public :backoff_delay, :retryable_http_error?, :extract_http_status,
-             :backoff_delay_for_http_error, :extract_retry_after
+             :backoff_delay_for_http_error, :extract_retry_after, :parse_retry_after_date
     end
   end
 
@@ -360,6 +360,33 @@ RSpec.describe Kessel::Auth::RetryHandler do
       expect(handler.retryable_http_error?(error)).to be true
     end
 
+    it 'returns true for 501 in message' do
+      error = StandardError.new('501 Not Implemented')
+      expect(handler.retryable_http_error?(error)).to be true
+    end
+
+    it 'returns true for 505 in message' do
+      error = StandardError.new('505 HTTP Version Not Supported')
+      expect(handler.retryable_http_error?(error)).to be true
+    end
+
+    it 'returns true for 507 in message' do
+      error = StandardError.new('507 Insufficient Storage')
+      expect(handler.retryable_http_error?(error)).to be true
+    end
+
+    it 'returns true for error with status method returning 507' do
+      error_class = Class.new(StandardError) { define_method(:status) { 507 } }
+      error = error_class.new('Insufficient Storage')
+      expect(handler.retryable_http_error?(error)).to be true
+    end
+
+    it 'returns true for error with status method returning 599' do
+      error_class = Class.new(StandardError) { define_method(:status) { 599 } }
+      error = error_class.new('Network connect timeout error')
+      expect(handler.retryable_http_error?(error)).to be true
+    end
+
     it 'returns true for "too many requests" in message' do
       error = StandardError.new('Rate limited: too many requests')
       expect(handler.retryable_http_error?(error)).to be true
@@ -458,6 +485,64 @@ RSpec.describe Kessel::Auth::RetryHandler do
       error_class = Class.new(StandardError) { define_method(:response) { response } }
       error = error_class.new('rate limited')
       expect(handler.extract_retry_after(error)).to be_nil
+    end
+
+    it 'parses HTTP-date Retry-After as seconds until target time' do
+      future_time = Time.now + 60
+      http_date = future_time.httpdate
+      response = { 'Retry-After' => http_date }
+      error_class = Class.new(StandardError) { define_method(:response) { response } }
+      error = error_class.new('rate limited')
+
+      result = handler.extract_retry_after(error)
+      expect(result).to be_a(Float)
+      expect(result).to be > 0
+      expect(result).to be <= 60
+    end
+
+    it 'returns nil for HTTP-date Retry-After in the past' do
+      past_time = Time.now - 60
+      http_date = past_time.httpdate
+      response = { 'Retry-After' => http_date }
+      error_class = Class.new(StandardError) { define_method(:response) { response } }
+      error = error_class.new('rate limited')
+
+      expect(handler.extract_retry_after(error)).to be_nil
+    end
+
+    it 'returns nil for invalid non-numeric non-date Retry-After' do
+      response = { 'Retry-After' => 'invalid-date-string' }
+      error_class = Class.new(StandardError) { define_method(:response) { response } }
+      error = error_class.new('rate limited')
+
+      expect(handler.extract_retry_after(error)).to be_nil
+    end
+
+    it 'returns nil for negative numeric Retry-After' do
+      response = { 'Retry-After' => '-5' }
+      error_class = Class.new(StandardError) { define_method(:response) { response } }
+      error = error_class.new('rate limited')
+
+      expect(handler.extract_retry_after(error)).to be_nil
+    end
+  end
+
+  describe '#parse_retry_after_date' do
+    it 'returns seconds until a future HTTP-date' do
+      future_time = Time.now + 120
+      result = handler.parse_retry_after_date(future_time.httpdate)
+      expect(result).to be_a(Float)
+      expect(result).to be > 0
+      expect(result).to be <= 120
+    end
+
+    it 'returns nil for a past HTTP-date' do
+      past_time = Time.now - 30
+      expect(handler.parse_retry_after_date(past_time.httpdate)).to be_nil
+    end
+
+    it 'returns nil for an invalid date string' do
+      expect(handler.parse_retry_after_date('not-a-date')).to be_nil
     end
   end
 

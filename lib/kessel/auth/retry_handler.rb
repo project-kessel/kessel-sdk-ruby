@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'net/http'
+require 'time'
 require 'timeout'
 
 module Kessel
@@ -34,8 +35,8 @@ module Kessel
         SocketError
       ].freeze
 
-      # HTTP status codes that warrant a retry.
-      RETRYABLE_HTTP_STATUSES = [429, 500, 502, 503, 504].freeze
+      # HTTP status codes that warrant a retry (429 + all 5xx server errors).
+      RETRYABLE_HTTP_STATUSES = ([429] + (500..599).to_a).freeze
 
       # Executes a block with retry logic using exponential backoff and jitter.
       #
@@ -102,12 +103,12 @@ module Kessel
         return RETRYABLE_HTTP_STATUSES.include?(status) if status
 
         msg = error.message
-        msg.match?(/\b(429|500|502|503|504)\b/) ||
+        msg.match?(/\b(429|5\d\d)\b/) ||
           msg.match?(/too many requests/i) ||
+          msg.match?(/server error/i) ||
           msg.match?(/service unavailable/i) ||
           msg.match?(/bad gateway/i) ||
-          msg.match?(/gateway timeout/i) ||
-          msg.match?(/internal server error/i)
+          msg.match?(/gateway timeout/i)
       end
 
       # Extracts an HTTP status code from an error object.
@@ -145,6 +146,11 @@ module Kessel
 
       # Extracts a Retry-After value from an error's response headers.
       #
+      # Supports both numeric (delay-seconds) and HTTP-date (RFC 7231 §7.1.3)
+      # formats. Numeric values are returned directly (including values exceeding
+      # max_delay). HTTP-date values are converted to seconds until the specified
+      # time; past dates return nil.
+      #
       # @param error [StandardError] The HTTP error
       # @return [Float, nil] Retry-After value in seconds or nil
       def extract_retry_after(error)
@@ -155,8 +161,28 @@ module Kessel
         header ||= resp.headers['Retry-After'] if resp.respond_to?(:headers) && resp.headers.respond_to?(:[])
         return unless header
 
-        value = header.to_f
-        value.positive? ? value : nil
+        # Try numeric (delay-seconds) first
+        numeric = Float(header, exception: false)
+        if numeric
+          return numeric if numeric.positive?
+
+          return nil
+        end
+
+        # Try HTTP-date format (e.g. "Thu, 18 Sep 2026 16:30:00 GMT")
+        parse_retry_after_date(header)
+      end
+
+      # Parses an HTTP-date Retry-After header into seconds until the target time.
+      #
+      # @param header [String] The Retry-After header value in HTTP-date format
+      # @return [Float, nil] Seconds until the specified time, or nil if invalid/past
+      def parse_retry_after_date(header)
+        target_time = Time.httpdate(header)
+        seconds = (target_time - Time.now).to_f
+        seconds.positive? ? seconds : nil
+      rescue ArgumentError
+        nil
       end
     end
   end
