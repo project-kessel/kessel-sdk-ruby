@@ -101,5 +101,51 @@ RSpec.describe 'OAuth2ClientCredentials thundering herd prevention' do
         expect(token.access_token).to eq('refreshed-token')
       end
     end
+
+    it 'shares one transient retry sequence across concurrent callers' do
+      calls = 0
+      allow(oauth).to receive(:sleep)
+      allow(oauth).to receive(:rand).and_return(0.0)
+      allow(mock_client).to receive(:access_token!) do
+        call_number = counter_mutex.synchronize do
+          calls += 1
+          calls
+        end
+        raise Timeout::Error, 'temporary timeout' if call_number <= 3
+
+        double('token_response', access_token: 'refreshed-token', expires_in: 3600)
+      end
+
+      tokens = run_concurrent_get_token(oauth, num_threads)
+
+      expect(calls).to eq(4)
+      tokens.each { |token| expect(token.access_token).to eq('refreshed-token') }
+    end
+
+    it 'coalesces concurrent callers with custom retry settings' do
+      custom_oauth = Kessel::Auth::OAuth2ClientCredentials.new(
+        client_id: client_id,
+        client_secret: client_secret,
+        token_endpoint: token_endpoint,
+        retry: { max_retries: 2, base_delay: 0.1, max_delay: 0.2, jitter: :none }
+      )
+      calls = 0
+      allow(custom_oauth).to receive(:create_oidc_client).and_return(mock_client)
+      allow(custom_oauth).to receive(:sleep)
+      allow(mock_client).to receive(:access_token!) do
+        call_number = counter_mutex.synchronize do
+          calls += 1
+          calls
+        end
+        raise Timeout::Error, 'temporary timeout' if call_number <= 2
+
+        double('token_response', access_token: 'custom-refreshed-token', expires_in: 3600)
+      end
+
+      tokens = run_concurrent_get_token(custom_oauth, num_threads)
+
+      expect(calls).to eq(3)
+      tokens.each { |token| expect(token.access_token).to eq('custom-refreshed-token') }
+    end
   end
 end

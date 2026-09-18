@@ -97,7 +97,8 @@ discovery = fetch_oidc_discovery('https://sso.example.com/auth/realms/my-realm')
 oauth = OAuth2ClientCredentials.new(
   client_id: 'my-app',
   client_secret: 'my-secret',
-  token_endpoint: discovery.token_endpoint
+  token_endpoint: discovery.token_endpoint,
+  retry: { max_retries: 3, base_delay: 0.5, max_delay: 2.0, jitter: :full }
 )
 
 # Build the client -- tokens are cached and refreshed automatically
@@ -105,6 +106,13 @@ client = KesselInventoryService::ClientBuilder.new('kessel.example.com:443')
                                               .oauth2_client_authenticated(oauth2_client_credentials: oauth)
                                               .build
 ```
+
+Token fetch retries apply only to the token endpoint, not OIDC discovery. By default, network/timeout errors and HTTP
+429/5xx responses receive four total attempts (initial plus three retries), with full-jitter delay caps of 0.5, 1,
+and 2 seconds and total added sleep below 3.5 seconds. `retry` accepts non-negative integer `max_retries` (0
+disables retries), positive finite-second `base_delay` and `max_delay`, and `jitter: :full` or `:none`; defaults are
+`3`, `0.5`, `2.0`, and `:full`. Invalid retry configuration raises `ArgumentError`. Permanent OAuth/configuration
+failures are not retried. Refresh is synchronous, so a transient SSO failure may delay an RPC.
 
 #### Custom or No Credentials
 
