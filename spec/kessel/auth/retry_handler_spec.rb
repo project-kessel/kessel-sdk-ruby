@@ -736,11 +736,6 @@ RSpec.describe Kessel::Auth::RetryHandler do
 
   describe '#retryable_cause?' do
     it 'returns true when cause is a retryable network error' do
-      error = begin
-        raise Errno::ECONNRESET
-      rescue StandardError
-        StandardError.new('wrapper')
-      end
       # Manually trigger cause chain by re-raising inside rescue
       wrapper = nil
       begin
@@ -808,13 +803,13 @@ RSpec.describe Kessel::Auth::RetryHandler do
     end
 
     it 'respects max_depth to prevent infinite loops' do
-      # Build a chain deeper than max_depth with non-retryable causes
+      # Build a chain deeper than max_depth with a retryable cause at the bottom
       wrapper = nil
       begin
         begin
           begin
             begin
-              raise ArgumentError, 'deep'
+              raise Errno::ECONNRESET
             rescue StandardError
               raise StandardError, 'level 3'
             end
@@ -828,7 +823,10 @@ RSpec.describe Kessel::Auth::RetryHandler do
         wrapper = e
       end
 
+      # Shallow depth can't reach the retryable cause
       expect(handler.retryable_cause?(wrapper, max_depth: 2)).to be false
+      # Sufficient depth finds the retryable cause
+      expect(handler.retryable_cause?(wrapper, max_depth: 5)).to be true
     end
   end
 
