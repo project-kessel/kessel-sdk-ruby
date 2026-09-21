@@ -2,6 +2,8 @@
 
 require 'grpc'
 require 'kessel/version'
+require 'socket'
+require 'timeout'
 
 module Kessel
   # OpenID Connect authentication module for Kessel services.
@@ -105,6 +107,7 @@ module Kessel
     #
     #   # Get current access token (automatically cached and refreshed)
     #   token = oauth.get_token
+    # rubocop:disable Metrics/ClassLength
     class OAuth2ClientCredentials
       include Kessel::Auth
 
@@ -113,9 +116,14 @@ module Kessel
       # @param client_id [String] OIDC client identifier
       # @param client_secret [String] OIDC client secret
       # @param token_endpoint [String] OIDC token endpoint URL
+      # @param retry [Hash] Optional token-endpoint retry settings. Keys are
+      #   `max_retries` (non-negative Integer; 0 disables retries), `base_delay`
+      #   and `max_delay` (positive finite seconds), and `jitter` (`:full` or
+      #   `:none`). Defaults are 3, 0.5, 2.0, and `:full`, respectively.
       #
       # @raise [OAuthDependencyError] if the openid_connect gem is not available
       # @raise [OAuthAuthenticationError] if authentication fails
+      # @raise [ArgumentError] if retry settings are invalid
       #
       # @example
       #   oauth = OAuth2ClientCredentials.new(
@@ -123,13 +131,20 @@ module Kessel
       #     client_secret: 'secret',
       #     token_endpoint: 'https://my-domain/auth/realms/my-realm/protocol/openid-connect/token'
       #   )
-      def initialize(client_id:, client_secret:, token_endpoint:)
+      def initialize(client_id:, client_secret:, token_endpoint:, **options)
+        validate_retry_options!(options)
+        retry_config = normalize_retry_config(options.fetch(:retry, {}))
         check_dependencies!
 
         @client_id = client_id
         @client_secret = client_secret
         @token_endpoint = token_endpoint
+        @retry_config = retry_config
         @token_mutex = Mutex.new
+        @generation_state_mutex = Mutex.new
+        @generation_users = Hash.new(0)
+        @generation_failures = {}
+        @cached_token_generation = nil
         @generation = 0
       end
 
@@ -147,22 +162,79 @@ module Kessel
       def get_token(force_refresh: false)
         return @cached_token if !force_refresh && token_valid?
 
-        generation = @generation
+        generation = register_generation
 
-        @token_mutex.synchronize do
-          # Another thread already refreshed while we waited on the lock
-          return @cached_token if @generation != generation && token_valid?
+        begin
+          @token_mutex.synchronize do
+            failure = generation_failure(generation)
 
-          @cached_token = refresh
-          @generation += 1
+            # A later successful generation may have recovered after this caller's failure.
+            return @cached_token if newer_cached_token?(generation)
+            raise failure if failure
 
-          return @cached_token
+            begin
+              token = refresh
+            rescue StandardError => e
+              record_failure_and_advance(generation, e)
+              raise
+            end
+            cache_token_and_advance(token)
+
+            @cached_token
+          end
         rescue StandardError => e
-          raise OAuthAuthenticationError, "Failed to obtain client credentials token: #{e.message}"
+          raise OAuthAuthenticationError, "Failed to obtain client credentials token: #{e.message}", cause: e
+        ensure
+          unregister_generation(generation)
         end
       end
 
       private
+
+      def register_generation
+        @generation_state_mutex.synchronize do
+          generation = @generation
+          @generation_users[generation] += 1
+          generation
+        end
+      end
+
+      def generation_failure(generation)
+        @generation_state_mutex.synchronize { @generation_failures[generation] }
+      end
+
+      def record_failure_and_advance(generation, error)
+        @generation_state_mutex.synchronize do
+          @generation_failures[generation] = error
+          @generation += 1
+        end
+      end
+
+      def advance_generation
+        @generation_state_mutex.synchronize { @generation += 1 }
+      end
+
+      def cache_token_and_advance(token)
+        @generation_state_mutex.synchronize do
+          @cached_token = token
+          @generation += 1
+          @cached_token_generation = @generation
+        end
+      end
+
+      def newer_cached_token?(generation)
+        !!(@cached_token_generation && @cached_token_generation > generation && token_valid?)
+      end
+
+      def unregister_generation(generation)
+        @generation_state_mutex.synchronize do
+          @generation_users[generation] -= 1
+          next unless @generation_users[generation].zero?
+
+          @generation_users.delete(generation)
+          @generation_failures.delete(generation)
+        end
+      end
 
       def refresh
         client = create_oidc_client
@@ -173,11 +245,115 @@ module Kessel
           client_secret: @client_secret
         }
 
-        token_data = client.access_token!(request_params)
+        token_data = access_token_with_retries(client, request_params)
         RefreshTokenResponse.new(
           access_token: token_data.access_token,
           expires_at: Time.now + (token_data.expires_in || DEFAULT_EXPIRES_IN)
         ).freeze
+      end
+
+      def access_token_with_retries(client, request_params)
+        retry_index = 0
+
+        begin
+          client.access_token!(request_params)
+        rescue StandardError => e
+          raise unless retryable_token_error?(e) && retry_index < @retry_config[:max_retries]
+
+          sleep(retry_delay(retry_index))
+          retry_index += 1
+          retry
+        end
+      end
+
+      def validate_retry_options!(options)
+        unknown_keys = options.keys - [:retry]
+        return if unknown_keys.empty?
+
+        raise ArgumentError, "unknown keyword: #{unknown_keys.first.inspect}"
+      end
+
+      def normalize_retry_config(retry_options)
+        unless retry_options.is_a?(Hash) && retry_options.keys.all?(Symbol)
+          raise ArgumentError, 'retry must be a symbol-keyed Hash'
+        end
+
+        unknown_keys = retry_options.keys - %i[max_retries base_delay max_delay jitter]
+        raise ArgumentError, "unknown retry option: #{unknown_keys.first.inspect}" unless unknown_keys.empty?
+
+        config = {
+          max_retries: 3,
+          base_delay: 0.5,
+          max_delay: 2.0,
+          jitter: :full
+        }.merge(retry_options)
+        validate_retry_config_values!(config)
+        config.freeze
+      end
+
+      def validate_retry_config_values!(config)
+        unless config[:max_retries].is_a?(Integer) && config[:max_retries] >= 0
+          raise ArgumentError, 'retry max_retries must be a non-negative Integer'
+        end
+
+        %i[base_delay max_delay].each do |key|
+          next if valid_delay?(config[key])
+
+          raise ArgumentError, "retry #{key} must be a positive finite Integer or Float"
+        end
+
+        return if %i[full none].include?(config[:jitter])
+
+        raise ArgumentError, 'retry jitter must be :full or :none'
+      end
+
+      def valid_delay?(value)
+        (value.is_a?(Integer) || value.is_a?(Float)) && value.positive? &&
+          (!value.is_a?(Float) || value.finite?)
+      end
+
+      def retry_delay(retry_index)
+        cap = [@retry_config[:max_delay], @retry_config[:base_delay] * (2**retry_index)].min
+        return cap if @retry_config[:jitter] == :none
+
+        rand(cap.to_f)
+      end
+
+      def retryable_token_error?(error)
+        retryable_rack_oauth_error?(error) || retryable_transient_error?(error)
+      end
+
+      def retryable_rack_oauth_error?(error)
+        return false unless defined?(::Rack::OAuth2::Client::Error)
+        return false unless error.is_a?(::Rack::OAuth2::Client::Error)
+
+        status = error.status
+        status == 429 || (status.is_a?(Integer) && status.between?(500, 599))
+      end
+
+      def retryable_transient_error?(error)
+        transient_error_classes.any? { |error_class| error.is_a?(error_class) }
+      end
+
+      def transient_error_classes
+        %w[
+          Faraday::ConnectionFailed
+          Faraday::TimeoutError
+          Timeout::Error
+          SocketError
+          EOFError
+          Errno::ECONNREFUSED
+          Errno::ECONNRESET
+          Errno::ETIMEDOUT
+          Errno::EHOSTUNREACH
+          Errno::ENETUNREACH
+        ].map { |name| optional_error_class(name) }.compact
+      end
+
+      def optional_error_class(name)
+        Object.const_get(name, false)
+      rescue NameError
+        nil
       end
 
       # Checks if we have a valid cached token.
@@ -206,5 +382,6 @@ module Kessel
         )
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

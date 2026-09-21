@@ -33,7 +33,11 @@ begin
     client_id: ENV.fetch('AUTH_CLIENT_ID', nil),
     client_secret: ENV.fetch('AUTH_CLIENT_SECRET', nil),
     token_endpoint: discovery.token_endpoint,
+    retry: { max_retries: 3, base_delay: 0.5, max_delay: 2.0, jitter: :full },
   )
+
+  # Token acquisition transparently retries short-lived token-endpoint failures;
+  # callers do not need to add special retry code.
 
   # Set GRPC_DEFAULT_SSL_ROOTS_FILE_PATH if testing locally
   # e.g. GRPC_DEFAULT_SSL_ROOTS_FILE_PATH="$(mkcert -CAROOT)/rootCA.pem"

@@ -1,5 +1,19 @@
 module Kessel
   module Auth
+    type retry_options = {
+      ?max_retries: Integer,
+      ?base_delay: Integer | Float,
+      ?max_delay: Integer | Float,
+      ?jitter: :full | :none
+    }
+
+    type normalized_retry_options = {
+      max_retries: Integer,
+      base_delay: Integer | Float,
+      max_delay: Integer | Float,
+      jitter: :full | :none
+    }
+
     # Exception raised when OAuth functionality is requested but dependencies are missing
     class OAuthDependencyError < StandardError
       def initialize: (?String message) -> void
@@ -42,13 +56,36 @@ module Kessel
     # OpenID Connect Client Credentials flow implementation
     class OAuth2ClientCredentials
       @token_mutex: Mutex
+      @generation_state_mutex: Mutex
       @generation: Integer
+      @generation_users: Hash[Integer, Integer]
+      @generation_failures: Hash[Integer, StandardError]
+      @cached_token_generation: Integer?
+      @retry_config: normalized_retry_options
 
-      def initialize: (client_id: String, client_secret: String, token_endpoint: String) -> void
+      def initialize: (client_id: String, client_secret: String, token_endpoint: String, ?retry: retry_options) -> void
       def get_token: (?force_refresh: bool) -> RefreshTokenResponse
 
       private
 
+      def register_generation: () -> Integer
+      def generation_failure: (Integer generation) -> StandardError?
+      def record_failure_and_advance: (Integer generation, StandardError error) -> void
+      def advance_generation: () -> void
+      def cache_token_and_advance: (RefreshTokenResponse token) -> void
+      def newer_cached_token?: (Integer generation) -> bool
+      def unregister_generation: (Integer generation) -> void
+      def access_token_with_retries: (untyped client, Hash[Symbol, String] request_params) -> untyped
+      def validate_retry_options!: (Hash[Symbol, untyped] options) -> void
+      def normalize_retry_config: (untyped retry_options) -> normalized_retry_options
+      def validate_retry_config_values!: (normalized_retry_options config) -> void
+      def valid_delay?: (untyped value) -> bool
+      def retry_delay: (Integer retry_index) -> (Integer | Float)
+      def retryable_token_error?: (StandardError error) -> bool
+      def retryable_rack_oauth_error?: (StandardError error) -> bool
+      def retryable_transient_error?: (StandardError error) -> bool
+      def transient_error_classes: () -> Array[Class[StandardError]]
+      def optional_error_class: (String name) -> Class[StandardError]?
       def token_valid?: () -> bool
       def refresh: () -> RefreshTokenResponse
       def create_oidc_client: () -> untyped
