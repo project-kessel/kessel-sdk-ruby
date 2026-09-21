@@ -234,7 +234,7 @@ RSpec.describe Kessel::Auth do
         expect(result.access_token).to eq('test-token')
       end
 
-      it 'preserves the cached token and generation when all retries fail' do
+      it 'preserves the cached token and advances generation when all retries fail' do
         cached_token = Kessel::Auth::RefreshTokenResponse.new('stale-token', Time.now + 60)
         oauth.instance_variable_set(:@cached_token, cached_token)
         oauth.instance_variable_set(:@generation, 7)
@@ -249,7 +249,7 @@ RSpec.describe Kessel::Auth do
         expect { oauth.get_token }.to raise_error(Kessel::Auth::OAuthAuthenticationError)
         expect(calls).to eq(4)
         expect(oauth.instance_variable_get(:@cached_token)).to equal(cached_token)
-        expect(oauth.instance_variable_get(:@generation)).to eq(7)
+        expect(oauth.instance_variable_get(:@generation)).to eq(8)
       end
 
       context 'when token retrieval fails' do

@@ -107,6 +107,7 @@ module Kessel
     #
     #   # Get current access token (automatically cached and refreshed)
     #   token = oauth.get_token
+    # rubocop:disable Metrics/ClassLength
     class OAuth2ClientCredentials
       include Kessel::Auth
 
@@ -140,6 +141,9 @@ module Kessel
         @token_endpoint = token_endpoint
         @retry_config = retry_config
         @token_mutex = Mutex.new
+        @generation_state_mutex = Mutex.new
+        @generation_users = Hash.new(0)
+        @generation_failures = {}
         @generation = 0
       end
 
@@ -157,22 +161,67 @@ module Kessel
       def get_token(force_refresh: false)
         return @cached_token if !force_refresh && token_valid?
 
-        generation = @generation
+        generation = register_generation
 
-        @token_mutex.synchronize do
-          # Another thread already refreshed while we waited on the lock
-          return @cached_token if @generation != generation && token_valid?
+        begin
+          @token_mutex.synchronize do
+            failure = generation_failure(generation)
+            raise failure if failure
 
-          @cached_token = refresh
-          @generation += 1
+            # Another thread already refreshed while we waited on the lock
+            return @cached_token if @generation != generation && token_valid?
 
-          return @cached_token
+            begin
+              @cached_token = refresh
+            rescue StandardError => e
+              record_failure_and_advance(generation, e)
+              raise
+            end
+            advance_generation
+
+            @cached_token
+          end
         rescue StandardError => e
-          raise OAuthAuthenticationError, "Failed to obtain client credentials token: #{e.message}"
+          raise OAuthAuthenticationError, "Failed to obtain client credentials token: #{e.message}", cause: e
+        ensure
+          unregister_generation(generation)
         end
       end
 
       private
+
+      def register_generation
+        @generation_state_mutex.synchronize do
+          generation = @generation
+          @generation_users[generation] += 1
+          generation
+        end
+      end
+
+      def generation_failure(generation)
+        @generation_state_mutex.synchronize { @generation_failures[generation] }
+      end
+
+      def record_failure_and_advance(generation, error)
+        @generation_state_mutex.synchronize do
+          @generation_failures[generation] = error
+          @generation += 1
+        end
+      end
+
+      def advance_generation
+        @generation_state_mutex.synchronize { @generation += 1 }
+      end
+
+      def unregister_generation(generation)
+        @generation_state_mutex.synchronize do
+          @generation_users[generation] -= 1
+          next unless @generation_users[generation].zero?
+
+          @generation_users.delete(generation)
+          @generation_failures.delete(generation)
+        end
+      end
 
       def refresh
         client = create_oidc_client
@@ -320,5 +369,6 @@ module Kessel
         )
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

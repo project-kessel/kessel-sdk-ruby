@@ -147,5 +147,95 @@ RSpec.describe 'OAuth2ClientCredentials thundering herd prevention' do
       expect(calls).to eq(3)
       tokens.each { |token| expect(token.access_token).to eq('custom-refreshed-token') }
     end
+
+    it 'coalesces persistent terminal failures and shares their raw cause' do
+      registration_queue = Queue.new
+      raw_failure = Timeout::Error.new('persistent timeout')
+      registrations = 0
+      registration_mutex = Mutex.new
+      allow(oauth).to receive(:register_generation).and_wrap_original do |original|
+        generation = original.call
+        registration_mutex.synchronize { registrations += 1 }
+        registration_queue << generation
+        generation
+      end
+      allow(oauth).to receive(:sleep)
+      allow(oauth).to receive(:rand).and_return(0.0)
+      calls = 0
+      first_request = true
+      allow(mock_client).to receive(:access_token!) do
+        if first_request
+          first_request = false
+          num_threads.times { registration_queue.pop }
+        end
+        calls += 1
+        raise raw_failure
+      end
+
+      errors = run_concurrent_get_token(oauth, num_threads)
+
+      expect(registrations).to eq(num_threads)
+      expect(calls).to eq(4)
+      expect(errors).to all(be_a(Kessel::Auth::OAuthAuthenticationError))
+      expect(errors.map(&:message).uniq).to eq(['Failed to obtain client credentials token: persistent timeout'])
+      expect(errors.map(&:cause).uniq).to eq([raw_failure])
+      expect(oauth.instance_variable_get(:@generation_users)).to be_empty
+      expect(oauth.instance_variable_get(:@generation_failures)).to be_empty
+    end
+
+    it 'cleans the failure registry so a later call can retry and succeed' do
+      allow(oauth).to receive(:sleep)
+      allow(oauth).to receive(:rand).and_return(0.0)
+      calls = 0
+      allow(mock_client).to receive(:access_token!) do
+        calls += 1
+        raise Timeout::Error, 'persistent timeout' if calls <= 4
+
+        double('token_response', access_token: 'recovered-token', expires_in: 3600)
+      end
+
+      expect { oauth.get_token }.to raise_error(Kessel::Auth::OAuthAuthenticationError)
+      expect(oauth.instance_variable_get(:@generation_users)).to be_empty
+      expect(oauth.instance_variable_get(:@generation_failures)).to be_empty
+
+      expect(oauth.get_token.access_token).to eq('recovered-token')
+      expect(calls).to eq(5)
+    end
+  end
+
+  it 'coalesces concurrent force-refresh failures and permits later force refresh' do
+    valid_token = Kessel::Auth::RefreshTokenResponse.new('cached-token', Time.now + 3600)
+    oauth.instance_variable_set(:@cached_token, valid_token)
+    registration_queue = Queue.new
+    raw_failure = Timeout::Error.new('persistent timeout')
+    allow(oauth).to receive(:register_generation).and_wrap_original do |original|
+      generation = original.call
+      registration_queue << generation
+      generation
+    end
+    allow(oauth).to receive(:sleep)
+    allow(oauth).to receive(:rand).and_return(0.0)
+    calls = 0
+    first_request = true
+    allow(mock_client).to receive(:access_token!) do
+      if first_request
+        first_request = false
+        num_threads.times { registration_queue.pop }
+      end
+      calls += 1
+      raise raw_failure if calls <= 4
+
+      double('token_response', access_token: 'forced-recovery-token', expires_in: 3600)
+    end
+
+    errors = run_concurrent_get_token(oauth, num_threads, force_refresh: true)
+
+    expect(calls).to eq(4)
+    expect(errors).to all(be_a(Kessel::Auth::OAuthAuthenticationError))
+    expect(errors.map(&:cause).uniq).to eq([raw_failure])
+    expect(oauth.get_token.access_token).to eq('cached-token')
+    expect(calls).to eq(4)
+    expect(oauth.get_token(force_refresh: true).access_token).to eq('forced-recovery-token')
+    expect(calls).to eq(5)
   end
 end
