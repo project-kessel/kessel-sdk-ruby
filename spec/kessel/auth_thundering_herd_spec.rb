@@ -148,6 +148,49 @@ RSpec.describe 'OAuth2ClientCredentials thundering herd prevention' do
       tokens.each { |token| expect(token.access_token).to eq('custom-refreshed-token') }
     end
 
+    it 'lets an older failed generation use a later successful cache' do
+      registration_started = Queue.new
+      release_registration = Queue.new
+      registration_mutex = Mutex.new
+      first_registration = true
+      allow(oauth).to receive(:register_generation).and_wrap_original do |original|
+        generation = original.call
+        gate = registration_mutex.synchronize do
+          next false unless first_registration
+
+          first_registration = false
+          true
+        end
+        if gate
+          registration_started << generation
+          release_registration.pop
+        end
+        generation
+      end
+      allow(oauth).to receive(:sleep)
+      allow(oauth).to receive(:rand).and_return(0.0)
+      raw_failure = Timeout::Error.new('persistent timeout')
+      allow(mock_client).to receive(:access_token!).and_raise(raw_failure)
+      result = Queue.new
+      old_waiter = Thread.new do
+        result << oauth.get_token
+      rescue StandardError => e
+        result << e
+      end
+
+      expect(registration_started.pop).to eq(0)
+      expect { oauth.get_token }.to raise_error(Kessel::Auth::OAuthAuthenticationError)
+
+      allow(mock_client).to receive(:access_token!).and_return(
+        double('token_response', access_token: 'newer-token', expires_in: 3600)
+      )
+      expect(oauth.get_token.access_token).to eq('newer-token')
+
+      release_registration << :continue
+      old_waiter.join
+      expect(result.pop.access_token).to eq('newer-token')
+    end
+
     it 'coalesces persistent terminal failures and shares their raw cause' do
       registration_queue = Queue.new
       raw_failure = Timeout::Error.new('persistent timeout')

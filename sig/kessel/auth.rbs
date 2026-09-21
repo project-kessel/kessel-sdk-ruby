@@ -60,6 +60,7 @@ module Kessel
       @generation: Integer
       @generation_users: Hash[Integer, Integer]
       @generation_failures: Hash[Integer, StandardError]
+      @cached_token_generation: Integer?
       @retry_config: normalized_retry_options
 
       def initialize: (client_id: String, client_secret: String, token_endpoint: String, ?retry: retry_options) -> void
@@ -71,6 +72,8 @@ module Kessel
       def generation_failure: (Integer generation) -> StandardError?
       def record_failure_and_advance: (Integer generation, StandardError error) -> void
       def advance_generation: () -> void
+      def cache_token_and_advance: (RefreshTokenResponse token) -> void
+      def newer_cached_token?: (Integer generation) -> bool
       def unregister_generation: (Integer generation) -> void
       def access_token_with_retries: (untyped client, Hash[Symbol, String] request_params) -> untyped
       def validate_retry_options!: (Hash[Symbol, untyped] options) -> void

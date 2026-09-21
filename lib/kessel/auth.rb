@@ -144,6 +144,7 @@ module Kessel
         @generation_state_mutex = Mutex.new
         @generation_users = Hash.new(0)
         @generation_failures = {}
+        @cached_token_generation = nil
         @generation = 0
       end
 
@@ -166,18 +167,18 @@ module Kessel
         begin
           @token_mutex.synchronize do
             failure = generation_failure(generation)
+
+            # A later successful generation may have recovered after this caller's failure.
+            return @cached_token if newer_cached_token?(generation)
             raise failure if failure
 
-            # Another thread already refreshed while we waited on the lock
-            return @cached_token if @generation != generation && token_valid?
-
             begin
-              @cached_token = refresh
+              token = refresh
             rescue StandardError => e
               record_failure_and_advance(generation, e)
               raise
             end
-            advance_generation
+            cache_token_and_advance(token)
 
             @cached_token
           end
@@ -211,6 +212,18 @@ module Kessel
 
       def advance_generation
         @generation_state_mutex.synchronize { @generation += 1 }
+      end
+
+      def cache_token_and_advance(token)
+        @generation_state_mutex.synchronize do
+          @cached_token = token
+          @generation += 1
+          @cached_token_generation = @generation
+        end
+      end
+
+      def newer_cached_token?(generation)
+        !!(@cached_token_generation && @cached_token_generation > generation && token_valid?)
       end
 
       def unregister_generation(generation)
