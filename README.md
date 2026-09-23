@@ -1,5 +1,7 @@
 # Kessel SDK for Ruby
 
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/project-kessel/kessel-sdk-ruby/badge)](https://securityscorecards.dev/viewer/?uri=github.com/project-kessel/kessel-sdk-ruby)
+
 [![CI](https://github.com/project-kessel/kessel-sdk-ruby/actions/workflows/ci.yml/badge.svg)](https://github.com/project-kessel/kessel-sdk-ruby/actions/workflows/ci.yml)
 
 The official Ruby gRPC client SDK for [Project Kessel](https://github.com/project-kessel) services. It provides generated protobuf/gRPC bindings for the Kessel Inventory API, a fluent client builder with credential validation, OAuth 2.0 Client Credentials authentication (via OIDC), and RBAC convenience helpers for workspace operations.
