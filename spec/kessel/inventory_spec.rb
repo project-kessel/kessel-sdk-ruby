@@ -155,17 +155,118 @@ RSpec.describe Kessel::Inventory do
       end
     end
 
+    describe '#keepalive' do
+      it 'converts seconds to milliseconds and preserves omitted values across updates' do
+        result = builder.keepalive(interval: 0.75, timeout: 1.25, permit_without_calls: false)
+                        .keepalive(interval: 1.2349, timeout: 2.3459, permit_without_calls: nil)
+
+        expect(result).to be(builder)
+        expect(mock_stub_class).to receive(:new).with(
+          target,
+          channel_credentials,
+          channel_args: {
+            'grpc.keepalive_time_ms' => 1_234,
+            'grpc.keepalive_timeout_ms' => 2_345,
+            'grpc.keepalive_permit_without_calls' => 0,
+            'grpc.http2.max_pings_without_data' => 0
+          }
+        )
+        builder.build
+      end
+
+      it 'accepts the minimum and maximum representable millisecond values' do
+        builder.keepalive(interval: Rational(1, 1000), timeout: Rational(2_147_483_647, 1000))
+
+        expect(mock_stub_class).to receive(:new).with(
+          target,
+          channel_credentials,
+          channel_args: {
+            'grpc.keepalive_time_ms' => 1,
+            'grpc.keepalive_timeout_ms' => 2_147_483_647,
+            'grpc.keepalive_permit_without_calls' => 1,
+            'grpc.http2.max_pings_without_data' => 0
+          }
+        )
+        builder.build
+      end
+
+      it 'leaves prior values unchanged when supplied values are invalid, including Float::MAX' do
+        builder.keepalive(interval: 1.5, timeout: 2.5, permit_without_calls: false)
+
+        expect do
+          builder.keepalive(interval: 3, timeout: 0)
+        end.to raise_error(RuntimeError, /Invalid keepalive timeout/)
+        expect do
+          builder.keepalive(interval: Float::MAX)
+        end.to raise_error(RuntimeError, /Invalid keepalive interval.*must convert/)
+        expect do
+          builder.keepalive(timeout: Float::MAX)
+        end.to raise_error(RuntimeError, /Invalid keepalive timeout.*must convert/)
+
+        expect(mock_stub_class).to receive(:new).with(
+          target,
+          channel_credentials,
+          channel_args: {
+            'grpc.keepalive_time_ms' => 1_500,
+            'grpc.keepalive_timeout_ms' => 2_500,
+            'grpc.keepalive_permit_without_calls' => 0,
+            'grpc.http2.max_pings_without_data' => 0
+          }
+        )
+        builder.build
+      end
+
+      [
+        { description: 'a non-numeric value', value: '1' },
+        { description: 'a complex value', value: Complex(1, 0) },
+        { description: 'an infinite value', value: Float::INFINITY },
+        { description: 'a NaN value', value: Float::NAN },
+        { description: 'a zero duration', value: 0 },
+        { description: 'a negative duration', value: -1 },
+        { description: 'a duration below one millisecond', value: 0.0009 },
+        { description: 'a duration above the gRPC limit', value: 2_147_483.648 }
+      ].each do |tt|
+        it "rejects #{tt[:description]}" do
+          expect { builder.keepalive(interval: tt[:value]) }
+            .to raise_error(RuntimeError, /Invalid keepalive interval/)
+        end
+      end
+
+      it 'requires permit_without_calls to be true, false, or nil' do
+        expect { builder.keepalive(permit_without_calls: 0) }
+          .to raise_error(RuntimeError, 'Invalid keepalive permit_without_calls: must be true, false, or nil')
+      end
+    end
+
     describe '#build' do
       context 'with default configuration' do
         it 'creates service instance with default channel credentials' do
-          expect(mock_stub_class).to receive(:new).with(target, channel_credentials)
+          expect(mock_stub_class).to receive(:new).with(
+            target,
+            channel_credentials,
+            channel_args: {
+              'grpc.keepalive_time_ms' => 45_000,
+              'grpc.keepalive_timeout_ms' => 10_000,
+              'grpc.keepalive_permit_without_calls' => 1,
+              'grpc.http2.max_pings_without_data' => 0
+            }
+          )
           builder.build
         end
       end
 
       context 'with insecure configuration' do
         it 'creates service instance with insecure credentials' do
-          expect(mock_stub_class).to receive(:new).with(target, :this_channel_is_insecure)
+          expect(mock_stub_class).to receive(:new).with(
+            target,
+            :this_channel_is_insecure,
+            channel_args: {
+              'grpc.keepalive_time_ms' => 45_000,
+              'grpc.keepalive_timeout_ms' => 10_000,
+              'grpc.keepalive_permit_without_calls' => 1,
+              'grpc.http2.max_pings_without_data' => 0
+            }
+          )
           builder.insecure.build
         end
       end
@@ -174,7 +275,16 @@ RSpec.describe Kessel::Inventory do
         it 'composes credentials before creating service' do
           composed_credentials = double('ComposedCredentials')
           expect(channel_credentials).to receive(:compose).with(call_credentials).and_return(composed_credentials)
-          expect(mock_stub_class).to receive(:new).with(target, composed_credentials)
+          expect(mock_stub_class).to receive(:new).with(
+            target,
+            composed_credentials,
+            channel_args: {
+              'grpc.keepalive_time_ms' => 45_000,
+              'grpc.keepalive_timeout_ms' => 10_000,
+              'grpc.keepalive_permit_without_calls' => 1,
+              'grpc.http2.max_pings_without_data' => 0
+            }
+          )
 
           builder.authenticated(call_credentials: call_credentials, channel_credentials: channel_credentials).build
         end
@@ -208,6 +318,33 @@ RSpec.describe Kessel::Inventory do
         builder.instance_variable_set(:@call_credentials, nil)
 
         expect { builder.send(:validate_credentials) }.not_to raise_error
+      end
+    end
+  end
+
+  describe 'native gRPC channel configuration' do
+    it 'constructs the v1beta2 channel with keepalive options without making an RPC' do
+      channels = []
+      captured_channel_args = nil
+
+      allow(GRPC::Core::Channel).to receive(:new).and_wrap_original do |original, *arguments|
+        captured_channel_args = arguments[1].dup
+        channel = original.call(*arguments)
+        channels << channel
+        channel
+      end
+
+      begin
+        Kessel::Inventory::V1beta2::KesselInventoryService::ClientBuilder.new('localhost:9000').insecure.build
+
+        expect(captured_channel_args).to include(
+          'grpc.keepalive_time_ms' => 45_000,
+          'grpc.keepalive_timeout_ms' => 10_000,
+          'grpc.keepalive_permit_without_calls' => 1,
+          'grpc.http2.max_pings_without_data' => 0
+        )
+      ensure
+        channels.each(&:close)
       end
     end
   end

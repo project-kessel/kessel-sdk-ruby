@@ -59,6 +59,25 @@ client = KesselInventoryService::ClientBuilder.new(target)
 
 `build` returns a single gRPC stub instance (not a tuple). The underlying gRPC channel manages its own HTTP/2 connection pool. Build once at application startup and reuse -- do not create a new stub per request.
 
+### HTTP/2 Keepalive
+
+Every `ClientBuilder` passes these channel arguments to its service stub, including builders that do not call `keepalive`:
+
+- `grpc.keepalive_time_ms`: 45,000 (45 seconds)
+- `grpc.keepalive_timeout_ms`: 10,000 (10 seconds)
+- `grpc.keepalive_permit_without_calls`: 1 (enabled)
+- `grpc.http2.max_pings_without_data`: 0 (internal Ruby gRPC setting; not exposed as a public option)
+
+`keepalive(interval: nil, timeout: nil, permit_without_calls: nil)` is fluent. Duration keywords are finite positive real
+numbers in seconds, converted to integer milliseconds by truncating fractional milliseconds downward; the result must
+be 1 through 2,147,483,647. `nil` leaves the existing setting unchanged, and `permit_without_calls` accepts only the
+actual boolean values `true` and `false`. Each call validates every supplied value before changing any builder state.
+
+These are transport ping settings, not RPC health checks, retries, or load-balancer guarantees. Check server and gateway
+keepalive enforcement compatibility before rollout (RHCLOUD-51673); in particular, the 45-second interval may be
+affected by an infrastructure-enforced minimum. Ruby's `grpc.http2.max_pings_without_data` value is internal and is not a
+cross-SDK configuration knob.
+
 ## Service Wiring Pattern
 
 Every gRPC service module must follow this exact pattern:
