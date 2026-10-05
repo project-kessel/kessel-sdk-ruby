@@ -56,3 +56,8 @@ desc 'run list_workspaces sample'
 task :list_workspaces do
   ruby 'list_workspaces.rb'
 end
+
+desc 'run keepalive sample'
+task :keepalive do
+  ruby 'keepalive.rb'
+end

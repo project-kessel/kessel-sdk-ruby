@@ -7,6 +7,9 @@ module Kessel
     class ClientBuilder
       def initialize: (String target) -> void
 
+      # Configure gRPC keepalive values in seconds; nil leaves the current value unchanged
+      def keepalive: (?interval: Numeric?, ?timeout: Numeric?, ?permit_without_calls: bool?) -> ClientBuilder
+
       # Configure client with OAuth2 client credentials authentication
       def oauth2_client_authenticated: (oauth2_client_credentials: Auth::OAuth2ClientCredentials, ?channel_credentials: ::GRPC::Core::ChannelCredentials?) -> ClientBuilder
 
@@ -29,6 +32,15 @@ module Kessel
 
       # Validate credential configuration
       def validate_credentials: () -> void
+
+      # Return only the channel arguments supplied for this keepalive update
+      def keepalive_channel_args: (Numeric? interval, Numeric? timeout, bool? permit_without_calls) -> Hash[String, Integer]
+
+      # Convert a finite positive duration in seconds to a supported gRPC millisecond value
+      def duration_to_milliseconds: (Numeric value, String name) -> Integer
+
+      # Check that a scaled duration is finite and fits the supported millisecond range
+      def valid_scaled_keepalive_milliseconds?: (Numeric milliseconds) -> bool
     end
 
     module V1

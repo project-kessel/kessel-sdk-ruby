@@ -130,6 +130,31 @@ client = KesselInventoryService::ClientBuilder.new(target)
 
 Build the client **once at application startup and reuse it**. The underlying gRPC channel manages its own HTTP/2 connection pool.
 
+### HTTP/2 Keepalive
+
+All inventory clients now use these transport keepalive defaults, including clients created by existing builder chains:
+
+- Ping interval: 45 seconds
+- Ping acknowledgement timeout: 10 seconds
+- Permit pings while there are no active calls: enabled
+
+Override these values with the fluent `keepalive` method. Durations are finite positive real numbers in seconds and
+are converted to integer milliseconds by truncating any fractional millisecond downward. The resulting value must be
+between 1 and 2,147,483,647 milliseconds. Passing `nil` leaves that setting unchanged; `permit_without_calls` accepts
+only `true` or `false` (including `false` as an explicit override).
+
+```ruby
+client = Kessel::Inventory::V1beta2::KesselInventoryService::ClientBuilder
+  .new(ENV.fetch('KESSEL_ENDPOINT', nil))
+  .keepalive(interval: 60, timeout: 10, permit_without_calls: false)
+  .build
+```
+
+The Ruby SDK sets `grpc.http2.max_pings_without_data` internally to avoid a local cap; it is not a public configuration
+option. Before rollout, confirm that the Kessel server and any gateway enforce compatible keepalive policies
+(RHCLOUD-51673). Keepalive is a transport-level ping mechanism, not an RPC health check and does not provide retries
+or load-balancer guarantees. The builder still returns a gRPC stub; build it once and reuse it as usual.
+
 ### Check Permissions
 
 ```ruby
@@ -347,6 +372,7 @@ The `examples/` directory contains working examples. Set up environment variable
 | `check_for_update_bulk.rb` | Bulk strongly consistent update checks |
 | `delete_resource.rb` | Deleting resources |
 | `fetch_workspaces.rb` | Fetching workspaces via RBAC HTTP API |
+| `keepalive.rb` | Configuring HTTP/2 keepalive on an inventory client |
 | `list_workspaces.rb` | Listing workspaces with auto-pagination |
 | `report_resource.rb` | Reporting resource state |
 | `console_principal.rb` | Building principals from `x-rh-identity` headers |
