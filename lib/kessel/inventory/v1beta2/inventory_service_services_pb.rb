@@ -121,6 +121,48 @@ module Kessel
           #
           # As an example, it can revoke previously granted access across the system.
           rpc :DeleteResource, ::Kessel::Inventory::V1beta2::DeleteResourceRequest, ::Kessel::Inventory::V1beta2::DeleteResourceResponse
+          # Adds one or more relationships to an existing *Resource*.
+          #
+          # If the *Resource* does not yet exist for this *Reporter*, it is created with
+          # the provided relationship fields as its initial representation. All other
+          # relationships already reported for that *Resource* are unaffected.
+          #
+          # Unlike `ReportResource`, which asserts the complete state of a *Resource*,
+          # this operation is a targeted mutation: it only touches the specific
+          # relationship fields and values named in the request. Attribute fields,
+          # other relationship fields, and metadata are left exactly as they were.
+          #
+          # Only relationship-typed fields from the *Resource's* schema are accepted;
+          # attribute fields are rejected.
+          #
+          # The relationships added through this API are used to determine relationship
+          # check outcomes via the Check and CheckForUpdate APIs.
+          #
+          # This API does **not** guarantee immediate read-your-writes consistency by default.
+          # If a reporter requires newly added relationships to be visible in subsequent
+          # checks (e.g., `Check`), the request must explicitly set `write_visibility = IMMEDIATE`.
+          rpc :AddResourceRelationships, ::Kessel::Inventory::V1beta2::AddResourceRelationshipsRequest, ::Kessel::Inventory::V1beta2::AddResourceRelationshipsResponse
+          # Removes one or more specific relationships from an existing *Resource*.
+          #
+          # All other relationships for the *Resource* are unaffected. If the *Resource*
+          # does not exist, this operation returns `NOT_FOUND` — matching the behaviour
+          # of `DeleteResource`.
+          #
+          # Unlike `ReportResource`, which asserts the complete state of a *Resource*,
+          # this operation is a targeted mutation: it only removes the specific
+          # relationship values named in the request. Attribute fields and other
+          # relationship fields are left exactly as they were.
+          #
+          # Only relationship-typed fields from the *Resource's* schema are accepted;
+          # attribute fields are rejected.
+          #
+          # The relationships removed through this API are used to determine relationship
+          # check outcomes via the Check and CheckForUpdate APIs.
+          #
+          # This API does **not** guarantee immediate read-your-writes consistency by default.
+          # If a reporter requires removed relationships to no longer be visible in subsequent
+          # checks (e.g., `Check`), the request must explicitly set `write_visibility = IMMEDIATE`.
+          rpc :RemoveResourceRelationships, ::Kessel::Inventory::V1beta2::RemoveResourceRelationshipsRequest, ::Kessel::Inventory::V1beta2::RemoveResourceRelationshipsResponse
           # Streams a list of objects where the given subject has the specified relation.
           #
           # This relationship query answers the question:
