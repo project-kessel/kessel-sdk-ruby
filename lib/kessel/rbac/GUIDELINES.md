@@ -47,9 +47,10 @@ All factory methods in `v2_helpers.rb` follow these rules:
 
 ### HTTP Client Handling
 
-- When `http_client` is `nil`, a new `Net::HTTP` is created per call (one TCP connection per fetch).
-- When `http_client` is provided, `check_http_client` validates that its `address` and `port` match the endpoint URI. Mismatches raise `RuntimeError`.
-- For multiple workspace fetches, pass a pre-started `Net::HTTP` to avoid repeated TCP handshakes.
+- When `http_client` is `nil`, a new `Net::HTTP` is created per call (one TCP connection per fetch). TLS is automatically enabled when the endpoint scheme is `https` via `use_ssl = (uri.scheme == 'https')`.
+- When `http_client` is provided, `check_http_client` validates that its `address` and `port` match the endpoint URI **and** that its `use_ssl?` setting matches the endpoint scheme. Host/port mismatches and SSL mismatches both raise `RuntimeError`.
+- For multiple workspace fetches, pass a pre-started `Net::HTTP` to avoid repeated TCP handshakes. Ensure the client's `use_ssl` setting matches the endpoint scheme.
+- Plaintext (`http://`) connections work unchanged for existing internal-URL consumers. No explicit opt-in is required for `http://` endpoints — TLS is only enforced when the scheme is `https`.
 
 ### Response Processing
 
