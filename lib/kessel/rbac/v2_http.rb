@@ -17,9 +17,13 @@ module Kessel
       end
 
       def check_http_client(http_client, uri)
-        return if uri.host == http_client.address && uri.port == http_client.port
+        unless uri.host == http_client.address && uri.port == http_client.port
+          raise 'http client host and port do not match rbac_base_endpoint'
+        end
 
-        raise 'http client host and port do not match rbac_base_endpoint'
+        return if http_client.use_ssl? == (uri.scheme == 'https')
+
+        raise 'http client SSL configuration does not match endpoint scheme'
       end
     end
   end

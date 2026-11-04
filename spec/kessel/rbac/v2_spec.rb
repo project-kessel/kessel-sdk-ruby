@@ -131,12 +131,13 @@ RSpec.describe Kessel::RBAC::V2 do
   end
 
   describe '#fetch_workspace' do
-    let(:mock_uri) { double('uri', host: 'localhost', port: 8888, query: nil) }
+    let(:mock_uri) { double('uri', host: 'localhost', port: 8888, query: nil, scheme: 'http') }
 
     before do
       allow_any_instance_of(Object).to receive(:URI).with('http://localhost:8888/api/rbac/v2/workspaces/').and_return(mock_uri)
       allow(mock_uri).to receive(:query=)
       allow(Net::HTTP).to receive(:new).with('localhost', 8888).and_return(mock_http)
+      allow(mock_http).to receive(:use_ssl=)
       allow(Net::HTTP::Get).to receive(:new).with(mock_uri).and_return(mock_request)
       allow(mock_request).to receive(:[]=)
       allow(mock_auth).to receive(:configure_request)
@@ -181,6 +182,44 @@ RSpec.describe Kessel::RBAC::V2 do
         expect(mock_uri).to receive(:query=).with('type=default')
 
         fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: mock_auth, with_ancestry: false)
+      end
+
+      it 'sets use_ssl to false for http endpoint' do
+        expect(mock_http).to receive(:use_ssl=).with(false)
+
+        fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: mock_auth)
+      end
+    end
+
+    context 'when endpoint uses https' do
+      let(:https_endpoint) { 'https://secure.example.com:443' }
+      let(:https_uri) { double('https_uri', host: 'secure.example.com', port: 443, query: nil, scheme: 'https') }
+      let(:mock_https_http) { double('https_http') }
+
+      before do
+        allow_any_instance_of(Object).to receive(:URI)
+          .with('https://secure.example.com:443/api/rbac/v2/workspaces/').and_return(https_uri)
+        allow(https_uri).to receive(:query=)
+        allow(Net::HTTP).to receive(:new).with('secure.example.com', 443).and_return(mock_https_http)
+        allow(mock_https_http).to receive(:use_ssl=)
+        allow(Net::HTTP::Get).to receive(:new).with(https_uri).and_return(mock_request)
+        allow(mock_request).to receive(:[]=)
+        allow(mock_auth).to receive(:configure_request)
+        allow(mock_https_http).to receive(:request).and_return(mock_response)
+        allow(mock_response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
+      end
+
+      it 'enables TLS on the default HTTP client' do
+        expect(mock_https_http).to receive(:use_ssl=).with(true)
+
+        fetch_workspace(https_endpoint, org_id, 'default', auth: mock_auth)
+      end
+
+      it 'returns workspace successfully over TLS' do
+        result = fetch_workspace(https_endpoint, org_id, 'default', auth: mock_auth)
+
+        expect(result).to be_a(Kessel::RBAC::V2::Workspace)
+        expect(result.id).to eq('workspace-123')
       end
     end
 
@@ -231,6 +270,7 @@ RSpec.describe Kessel::RBAC::V2 do
       it 'does not create an http_client' do
         allow(mock_http).to receive(:address).and_return('localhost')
         allow(mock_http).to receive(:port).and_return(8888)
+        allow(mock_http).to receive(:use_ssl?).and_return(false)
         allow(Net::HTTP).to receive(:new).with('localhost', 8888).and_raise('should not call Net::HTTP.new')
         fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: nil, http_client: mock_http)
       end
@@ -240,7 +280,7 @@ RSpec.describe Kessel::RBAC::V2 do
         allow(mock_http).to receive(:port).and_return(8888)
         expect do
           fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: nil, http_client: mock_http)
-        end.to raise_error
+        end.to raise_error(/host and port do not match/)
       end
 
       it 'http client needs to have the same port as the url' do
@@ -248,7 +288,56 @@ RSpec.describe Kessel::RBAC::V2 do
         allow(mock_http).to receive(:port).and_return(9999)
         expect do
           fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: nil, http_client: mock_http)
-        end.to raise_error
+        end.to raise_error(/host and port do not match/)
+      end
+
+      it 'accepts http_client with matching SSL configuration for http endpoint' do
+        allow(mock_http).to receive(:address).and_return('localhost')
+        allow(mock_http).to receive(:port).and_return(8888)
+        allow(mock_http).to receive(:use_ssl?).and_return(false)
+
+        result = fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: nil, http_client: mock_http)
+        expect(result).to be_a(Kessel::RBAC::V2::Workspace)
+      end
+
+      it 'rejects http_client with SSL enabled for http endpoint' do
+        allow(mock_http).to receive(:address).and_return('localhost')
+        allow(mock_http).to receive(:port).and_return(8888)
+        allow(mock_http).to receive(:use_ssl?).and_return(true)
+
+        expect do
+          fetch_workspace(rbac_base_endpoint, org_id, 'default', auth: nil, http_client: mock_http)
+        end.to raise_error(/SSL configuration does not match endpoint scheme/)
+      end
+
+      context 'with https endpoint' do
+        let(:https_endpoint) { 'https://secure.example.com:443' }
+        let(:https_uri) do
+          double('https_uri', host: 'secure.example.com', port: 443, query: nil, scheme: 'https')
+        end
+
+        before do
+          allow_any_instance_of(Object).to receive(:URI)
+            .with('https://secure.example.com:443/api/rbac/v2/workspaces/').and_return(https_uri)
+          allow(https_uri).to receive(:query=)
+          allow(Net::HTTP::Get).to receive(:new).with(https_uri).and_return(mock_request)
+        end
+
+        it 'accepts http_client with SSL enabled for https endpoint' do
+          ssl_client = double('ssl_http', address: 'secure.example.com', port: 443, use_ssl?: true)
+          allow(ssl_client).to receive(:request).and_return(mock_response)
+
+          result = fetch_workspace(https_endpoint, org_id, 'default', auth: mock_auth, http_client: ssl_client)
+          expect(result).to be_a(Kessel::RBAC::V2::Workspace)
+        end
+
+        it 'rejects http_client without SSL for https endpoint' do
+          plaintext_client = double('plaintext_http', address: 'secure.example.com', port: 443, use_ssl?: false)
+
+          expect do
+            fetch_workspace(https_endpoint, org_id, 'default', auth: nil, http_client: plaintext_client)
+          end.to raise_error(/SSL configuration does not match endpoint scheme/)
+        end
       end
     end
   end

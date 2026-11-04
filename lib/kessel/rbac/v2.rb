@@ -111,6 +111,7 @@ module Kessel
         uri.query = URI.encode_www_form(query)
         if http_client.nil?
           http_client = Net::HTTP.new(uri.host, uri.port)
+          http_client.use_ssl = (uri.scheme == 'https')
         else
           check_http_client(http_client, uri)
         end
