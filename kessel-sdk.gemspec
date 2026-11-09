@@ -20,6 +20,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Runtime dependencies
+  spec.add_dependency 'base64'
   spec.add_dependency 'grpc', '>= 1.73.0'
 
   # Development dependencies - Testing
@@ -39,7 +40,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'yard', '~> 0.9'
 
   # Development dependencies - Type checking
-  spec.add_development_dependency 'steep', '~> 1.10.0'
+  spec.add_development_dependency 'steep', '~> 2.1.0'
   spec.add_development_dependency 'typeprof', '~> 0.32.0'
 
   if spec.respond_to? :metadata
