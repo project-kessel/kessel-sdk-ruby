@@ -41,7 +41,7 @@ GEM
       racc
     prism (2.1.0)
     racc (1.8.1)
-    rack (3.2.8)
+    rack (3.2.9)
     rackup (2.3.1)
       rack (>= 3)
     rainbow (3.1.1)
